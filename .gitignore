@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+!.env.prototype.example
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Runtime artifacts
+*.log
+.coverage
+htmlcov/

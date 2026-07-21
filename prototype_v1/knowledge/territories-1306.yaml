@@ -1,0 +1,7 @@
+verified: true
+verified_by: "Seed sementara Prototype — belum signoff PIC/MFD"
+verified_at: "2026-07-21"
+territories:
+  - code: "1306"
+    label: "Kabupaten Padang Pariaman"
+    ancestor: "1306"

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marawa — Asisten Virtual PST</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="app" aria-labelledby="app-title">
+    <header class="header">
+      <div>
+        <p class="eyebrow">BPS Kabupaten Padang Pariaman</p>
+        <h1 id="app-title">Marawa</h1>
+        <p class="subtitle">Asisten virtual statistik</p>
+      </div>
+      <button id="new-conversation" type="button">Percakapan baru</button>
+    </header>
+
+    <section id="transcript" class="transcript" aria-live="polite" aria-label="Percakapan">
+      <article class="bubble assistant"><p>Halo, saya Marawa, asisten virtual BPS Kabupaten Padang Pariaman.</p><p>Saya dapat membantu mencari data, menjelaskan konsep statistik, dan memberi informasi layanan PST.</p></article>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <form id="chat-form" class="composer">
+      <label class="sr-only" for="message-input">Tulis pesan</label>
+      <textarea id="message-input" name="message" rows="1" maxlength="8000" placeholder="Tulis kebutuhan statistik…" required></textarea>
+      <button type="submit">Kirim</button>
+    </form>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

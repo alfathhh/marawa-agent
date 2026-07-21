@@ -1,0 +1,19 @@
+source_key: pst_services
+title: Layanan PST BPS Kabupaten Padang Pariaman
+source_url: https://pst.bps.go.id
+verified: true
+verified_by: "Seed sementara Prototype — belum signoff PIC"
+verified_at: "2026-07-21"
+sections:
+  - heading: Permintaan data dan perpustakaan
+    text: "Pengguna dapat meminta bantuan menemukan data resmi BPS. Marawa menelusuri SIMDASI, Tabel Dinamis, dan metadata Publikasi; publikasi hanya ditampilkan sebagai judul, abstraksi, dan tautan baca atau unduh."
+    aliases: [permintaan data, perpustakaan, cari data, publikasi]
+  - heading: Konsultasi statistik
+    text: "Untuk konsultasi statistik lanjutan, pengguna diarahkan mengisi Buku Tamu dan dapat memilih handover admin. Pada Prototype 1, handover admin masih simulasi dan belum menghubungkan petugas nyata."
+    aliases: [konsultasi, konsultasi statistik]
+  - heading: Rekomendasi statistik
+    text: "Untuk layanan rekomendasi kegiatan statistik, pengguna diarahkan mengisi Buku Tamu dan dapat meminta bantuan admin. Pada Prototype 1, koneksi admin masih simulasi."
+    aliases: [rekomendasi, rekomendasi statistik]
+  - heading: Buku Tamu
+    text: "Tautan Buku Tamu resmi yang digunakan Prototype adalah https://s.bps.go.id/tamu1306."
+    aliases: [buku tamu, tamu, formulir]
