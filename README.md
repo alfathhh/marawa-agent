@@ -14,7 +14,7 @@ Repository mandiri Marawa Agentic untuk membuktikan pencarian data resmi BPS dom
 6. **API-SPEC.md** — REST browser serta schema/error tool internal.
 7. **AGENT.md** — persona, system prompt, tools, source hierarchy, state, templates.
 8. **TEST-SCENARIOS.md** — 80 skenario gate normatif.
-9. **TASKS.md** — urutan TDD M0–M6 dan pertanyaan PO.
+9. **TASKS.md** — bukti eksekusi TDD M0–M6 dan keputusan PO.
 10. **AGENTS.md** — aturan coding agent/developer.
 
 ## Lima konsep kunci
@@ -61,7 +61,7 @@ Status ini time-sensitive. TASKS 6.4 wajib menguji ulang tanpa memaparkan creden
 | API-SPEC.md | 1.0 | Disetujui/generate awal |
 | AGENT.md | 1.0 | Disetujui/generate awal |
 | TEST-SCENARIOS.md | 1.0 | 80 skenario normatif |
-| TASKS.md | 1.0 | Direncanakan; belum dieksekusi |
+| TASKS.md | 1.0 | Prototype dieksekusi; M6.4 tercatat degraded dan fase 2 diotorisasi |
 | DECISIONS.md | 1.0 | Append-only |
 | AGENTS.md | 1.0 | Aturan implementasi |
 | README.md | 1.0 | Indeks |
@@ -79,3 +79,7 @@ Status ini time-sensitive. TASKS 6.4 wajib menguji ulang tanpa memaparkan creden
 - [x] Pertanyaan PIC/provider/Glosarium tercatat di TASKS.
 
 Audit lokal terakhir: 11 file, 38 ID fitur unik, 80 skenario unik, 80 Given/When/Then, 29 blok JSON valid, seluruh code fence seimbang, seluruh referensi dokumen tersedia, dan `git diff --check` bersih.
+
+## Fase operasional
+
+PO mengotorisasi fase WhatsApp/dashboard pada 21 Juli 2026 dengan Glosarium dan 9router sebagai accepted degraded dependency. Kontrak dan milestone berada di [FASE-2.md](FASE-2.md); source baru berada di `operational/` tanpa mengubah guardrail fakta Prototype.

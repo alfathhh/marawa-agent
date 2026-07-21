@@ -73,9 +73,9 @@ def test_api_and_agent_tool_names_are_closed_and_consistent():
 def test_unresolved_gates_remain_explicit_and_are_not_marked_complete():
     tasks, decisions = text("TASKS.md"), text("DECISIONS.md")
 
-    assert "- [x] **6.3" in tasks
-    assert "- [ ] **6.4" in tasks and "- [ ] **6.8" in tasks
-    assert "BELUM TERJAWAB" in tasks
+    assert "- [x] **6.3" in tasks and "- [x] **6.8" in tasks
+    assert "- [ ] **6.4" in tasks
+    assert "DECISIONS #24" in tasks
     assert "belum direkomendasikan ke fase 2" in tasks
     assert "Glosarium" in decisions and "HTTP 500" in decisions
 

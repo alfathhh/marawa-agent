@@ -75,7 +75,7 @@
 - [x] **6.5 [B] Provider conformance.** Jalankan 80 fixture pada model production candidate. **Bukti:** 80/80; tool schema/calls valid; no unsupported vendor feature.
 - [x] **6.6 [A–H] Spec compliance review.** Review FEATURES→PRD→API/DB/AGENT→tests; perbaiki blocker/critical. **Bukti:** consistency script dan manual checklist README hijau.
 - [x] **6.7 [A–H] Code quality/final gate.** `python3 -m pytest tests/prototype_v1 -q`, `ruff check prototype_v1 tests/prototype_v1`, `git diff --check`; review diff agar tidak menyentuh production path di luar izin. **Bukti:** seluruh command exit 0.
-- [ ] **6.8 [PO] UAT keputusan.** PO menjalankan minimal running example, definition no-match, source partial failure, out-of-scope, dan handover mock. **Output:** `LANJUT FASE WHATSAPP` atau daftar blocker; belum ada deploy production.
+- [x] **6.8 [PO] UAT keputusan.** PO memutuskan lanjut fase WhatsApp/dashboard dengan Glosarium live dan 9router sebagai accepted degraded dependency sementara (DECISIONS #24). Automated UAT wajib tetap hijau; belum ada deploy production.
 
 ## Pemetaan sub-fitur ke task
 
@@ -95,7 +95,7 @@
 | # | Pertanyaan | Status/keputusan |
 |---|---|---|
 | 1 | Siapa nama/jabatan PIC PST yang memverifikasi KB Prototype 1 serta registry MFD kecamatan/nagari domain 1306, dan tanggal verifikasinya? | **SEED SEMENTARA DIIZINKAN PO.** Tidak memblokir demo, tetapi belum merupakan signoff resmi dan tetap memblokir klaim produksi. |
-| 2 | Model/provider OpenAI-compatible mana yang menjadi kandidat UAT? | **BELUM TERJAWAB tetapi non-blocking untuk docs.** Dipilih sebelum task 6.5; harus lulus 80/80. |
+| 2 | Model/provider mana yang menjadi kandidat UAT? | **SUDAH TERJAWAB:** Gemini native adalah provider utama; 9router accepted unavailable sementara (DECISIONS #24). |
 | 3 | Apakah Glosarium Web API BPS sudah kembali sukses saat UAT? | **BELUM TERJAWAB karena time-sensitive.** Smoke 21 Jul 2026 menghasilkan HTTP 500; cek ulang task 6.4. |
-| 4 | Apakah empat smoke live wajib sebelum fase WhatsApp? | **SUDAH TERJAWAB — DECISIONS #17/#18:** ya; fallback demo tidak sama dengan sumber live terverifikasi. |
+| 4 | Apakah empat smoke live wajib sebelum fase WhatsApp? | **DISUPERSEDE — DECISIONS #24:** Glosarium live diterima degraded sementara; fallback KB wajib dan kegagalan tetap terlihat. |
 | 5 | Lokasi source prototype? | **SUDAH TERJAWAB — DECISIONS #20:** repository mandiri `/home/ubuntu/projects/marawa-agentic`, package `prototype_v1/`. |

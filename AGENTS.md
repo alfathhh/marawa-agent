@@ -9,11 +9,15 @@ Marawa Prototype 1 adalah web chat lokal untuk membuktikan percakapan data BPS d
 
 **Yang tidak tertulis di paket ini tidak ada.** Jangan menambah fitur, endpoint, field, dependency, sumber fakta, atau roadmap production dari common sense. Jika ambigu, catat di TASKS Pertanyaan PO.
 
-## Stack — jangan diganti
+## Scope aturan
+
+Aturan Prototype-only di bawah berlaku untuk `prototype_v1/` dan `tests/prototype_v1/`. Fase operasional berada di `operational/` dan `tests/operational/` serta mengikuti `operational/AGENTS.md`. Larangan deploy production tetap berlaku untuk seluruh repository tanpa izin eksplisit.
+
+## Stack Prototype — jangan diganti
 
 Python 3.12+ · FastAPI · Uvicorn · `openai` OpenAI-compatible · `httpx` · vanilla HTML/CSS/JS · state in-memory + browser localStorage · YAML/Markdown verified KB · stdlib Decimal · pytest/ruff.
 
-Dilarang: database/ORM/migration, Redis, vector DB/embedding, LangChain/LlamaIndex, SDK vendor, React/Vue/Svelte, scraper SIRuSa, Evolution API, dashboard, Docker/deploy production.
+Dilarang di Prototype: database/ORM/migration, Redis, vector DB/embedding, LangChain/LlamaIndex, SDK vendor, React/Vue/Svelte, scraper SIRuSa, Evolution API, dashboard, Docker/deploy production.
 
 ## Perintah target
 
@@ -54,7 +58,7 @@ Jangan invent command migration/seed/build frontend. Prototype tidak memilikinya
 
 ## Konvensi kode
 
-- Source aplikasi berada di `prototype_v1/`; test berada di `tests/prototype_v1/`.
+- Source Prototype berada di `prototype_v1/`; test Prototype berada di `tests/prototype_v1/`.
 - Nama kode English snake_case; teks UI Bahasa Indonesia.
 - Gunakan dataclass/Pydantic hanya di boundary; jangan buat interface/factory untuk satu implementasi.
 - Controller `app.py` tipis; state di `state.py`; BPS di `bps_adapter.py`; hitung di `analysis.py`; gate di `guardrails.py`.

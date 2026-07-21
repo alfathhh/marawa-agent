@@ -28,6 +28,8 @@
 | 21 | 21 Jul 2026 | **PO mengizinkan seed KB sementara untuk demo, dengan label eksplisit belum signoff PIC/MFD.** Seed boleh melewati loader verified-only pada prototype, tetapi tidak boleh menjadi klaim produksi. | `prototype_v1/knowledge/` · TASKS M4.2 |
 | 22 | 21 Jul 2026 | **SIMDASI domain 1306 memakai service interoperabilitas ID 23 dan MFD `1306000`.** Live smoke berhasil; endpoint list generik `model=simdasi` bukan kontrak katalog yang benar. | `bps_adapter.py` · TASKS M3/M6.4 |
 | 23 | 21 Jul 2026 | **Glosarium diuji persis seperti URL yang dibentuk JavaScript dokumentasi.** List dan detail tetap HTTP 500 dengan pesan aplikasi `Please re-check your URL Request`; parser schema resmi `_source` tetap disiapkan dan fallback KB dipertahankan. | `bps_adapter.py` · TASKS M4.1/M6.4 |
+| 24 | 21 Jul 2026 | **PO menerima Glosarium live dan 9router fallback sebagai degraded dependency sementara serta memutuskan lanjut ke fase operasional WhatsApp/dashboard.** Gemini tetap provider utama; fallback KB wajib saat Glosarium gagal; kegagalan 9router tidak boleh memblokir atau memicu jawaban tanpa sumber. | FASE-2.md · paket `operational/` |
+| 25 | 21 Jul 2026 | **Status outbound WhatsApp tidak boleh dianggap delivered hanya karena Evolution `sendText` mengembalikan 2xx/provider ID.** Delivery final berasal dari webhook `messages.update`; status `ERROR` setelah provider menerima request wajib tercatat. | FASE-2.md · outbox/delivery contract |
 
 ## Konsekuensi teknis ringkas
 
