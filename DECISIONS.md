@@ -32,6 +32,7 @@
 | 25 | 21 Jul 2026 | **Status outbound WhatsApp tidak boleh dianggap delivered hanya karena Evolution `sendText` mengembalikan 2xx/provider ID.** Delivery final berasal dari webhook `messages.update`; status `ERROR` setelah provider menerima request wajib tercatat. | FASE-2.md · outbox/delivery contract |
 | 26 | 21 Jul 2026 | **Persistence fase operasional memakai PostgreSQL 17, SQLAlchemy Core, Psycopg 3, dan Alembic.** Schema ditambah per milestone; tidak membuat seluruh dashboard/handover schema sebelum behavior-nya diuji. | `requirements-operational.txt` · `migrations/` · `operational/persistence.py` |
 | 27 | 21 Jul 2026 | **Outbox berjalan single-worker/replica dengan PostgreSQL `FOR UPDATE SKIP LOCKED`, lease 90 detik, ordering per nomor, maksimal 8 attempt, dan exponential backoff maksimal 900 detik.** Multi-replica ditunda sampai seluruh fencing state diuji. | `operational/delivery.py` · migration `0002` |
+| 28 | 21 Jul 2026 | **Dashboard PST tidak memakai IP rate limit atau automatic account lock pada MVP.** Proteksi password, generic login failure, session revocation, CSRF, exact Origin, RBAC, temporary-password, dan last-superadmin tetap wajib. Revisit bila dashboard diekspos publik atau ada evidence brute-force. | `operational/dashboard*` · hardening H1 |
 
 ## Konsekuensi teknis ringkas
 

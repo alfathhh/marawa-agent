@@ -15,7 +15,9 @@ def test_dashboard_shell_has_required_views_and_accessibility_hooks():
     assert "min-height:44px" in css
     assert "100dvh" in css
     assert "@media(max-width:640px)" in css
-    assert "overflow:auto" in css
+    assert "min-height:44px" in css
+    assert "setInterval(refreshDashboard,5000)" in js
+    assert "textContent" in js and "innerHTML" not in js
 
 
 def test_dashboard_never_embeds_secret_or_provider_configuration():

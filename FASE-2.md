@@ -75,10 +75,10 @@ Outbound: QUEUED → SENDING → ACCEPTED → SERVER_ACK → DELIVERY_ACK → RE
 
 ### P5 — Acceptance
 
-- [x] Unit/contract/integration PostgreSQL semua state: 317 passed pada 21 Juli 2026.
+- [x] Unit/contract/integration PostgreSQL semua state: 333 passed pada 21 Juli 2026.
 - [x] Lease-based restart recovery inbox/outbox.
 - [ ] Evolution live: butuh URL/API key/instance dan nomor WhatsApp UAT nyata.
-- [x] Browser desktop login/navigation/degraded Evolution dan security headers diuji nyata; responsive 360px dijaga contract CSS, mobile screenshot belum diambil karena browser resize runner tidak tersedia.
+- [x] Browser desktop login/navigation/degraded Evolution dan security headers diuji nyata; Chrome headless mobile `360×640` menghasilkan PNG exact tanpa overflow, overlap, clipping, atau control tidak terbaca.
 
 ## Gate implementasi
 

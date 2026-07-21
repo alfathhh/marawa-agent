@@ -15,13 +15,14 @@
       <button data-view="inbox" aria-current="page">Inbox</button>
       <button data-view="settings">Pengaturan</button>
       <button data-view="users">Pengguna</button>
+      <button id="logout">Keluar</button>
     </nav>
     <section id="inbox" class="layout">
       <aside><h1>Antrean bantuan</h1><ul id="queue" aria-live="polite"><li>Belum ada percakapan.</li></ul></aside>
       <article><h2 id="chat-title">Pilih percakapan</h2><div id="messages" aria-live="polite"></div><form id="reply"><label for="reply-text">Balasan petugas</label><textarea id="reply-text" maxlength="4000" disabled></textarea><button disabled>Kirim via nomor bot</button></form></article>
     </section>
-    <section id="settings" hidden><h1>Pengaturan operasional</h1><p>Status instance, pairing QR, webhook, jam layanan, dan timeout dikelola superadmin.</p><button id="check-wa">Periksa WhatsApp</button><button id="pair-wa">Tampilkan QR</button><div id="qr" aria-live="polite"></div></section>
-    <section id="users" hidden><h1>Pengguna</h1><p>Superadmin dapat menambah petugas dan superadmin serta menonaktifkan akun.</p><button id="add-user">Tambah pengguna</button><div id="user-list" aria-live="polite"></div></section>
+    <section id="settings" hidden><h1>Pengaturan operasional</h1><p>Status instance, pairing QR, jam layanan, bot, dan timeout dikelola superadmin.</p><button id="check-wa">Periksa WhatsApp</button><button id="pair-wa">Tampilkan QR</button><div id="qr" aria-live="polite"></div><form id="settings-form"><label for="claim-timeout">Timeout klaim (menit)</label><input id="claim-timeout" type="number" min="1" max="1440" value="5"><label><input id="bot-enabled" type="checkbox" checked> Bot aktif</label><button>Simpan pengaturan</button><p id="settings-status" role="status"></p></form></section>
+    <section id="users" hidden><h1>Pengguna</h1><p>Superadmin dapat menambah petugas dan superadmin serta menonaktifkan akun.</p><form id="user-form"><label for="new-username">Nama pengguna</label><input id="new-username" required minlength="3"><label for="new-password">Password sementara</label><input id="new-password" type="password" required minlength="10"><label for="new-role">Peran</label><select id="new-role"><option value="petugas">Petugas</option><option value="superadmin">Superadmin</option></select><button>Tambah pengguna</button></form><div id="user-list" aria-live="polite"></div><h2>Ganti password</h2><form id="password-form"><label for="current-password">Password saat ini</label><input id="current-password" type="password" required><label for="next-password">Password baru</label><input id="next-password" type="password" required minlength="10"><button>Ganti password</button><p id="password-status" role="status"></p></form></section>
     </div>
   </main>
   <script src="/dashboard/static/dashboard.js" defer></script>

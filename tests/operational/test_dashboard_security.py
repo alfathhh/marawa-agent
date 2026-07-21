@@ -30,6 +30,7 @@ def test_signed_session_rejects_tampering_and_expiry():
         "role": "petugas",
         "csrf": csrf,
         "exp": 160,
+        "version": 1,
     }
     assert verify_request(token + "x", None, "GET", SECRET, now=120) is None
     assert verify_request(token, None, "GET", SECRET, now=161) is None

@@ -39,16 +39,27 @@ class Backend:
             for user in self.users.values()
         ]
 
-    def create_user(self, body):
+    def create_user(self, body, actor_id=None):
         self.actions.append(("create_user", body))
         return {"id": 2}
 
     def get_settings(self):
         return {"BOT_ENABLED": True, "ADMIN_CLAIM_TIMEOUT_MIN": 5}
 
-    def set_settings(self, body):
+    def set_settings(self, body, actor_id=None):
         self.actions.append(("settings", body))
         return body
+
+    def change_password(self, user_id, body, actor_id=None):
+        self.users["admin"]["session_version"] = 2
+        self.users["admin"]["must_change_password"] = False
+        return {"id": user_id}
+
+    def reset_password(self, user_id, body, actor_id=None):
+        return {"id": user_id}
+
+    def set_user_active(self, user_id, body, actor_id=None):
+        return {"id": user_id, "active": body["active"]}
 
 
 class Evolution:
@@ -195,6 +206,24 @@ def test_deactivated_user_session_is_revoked_immediately():
     )
     login(client)
     backend.users["admin"]["active"] = False
+    assert client.get("/dashboard/api/auth/me").status_code == 401
+
+
+def test_session_version_revokes_and_temporary_user_is_limited():
+    backend = Backend()
+    backend.users["admin"].update(session_version=1, must_change_password=True)
+    client = TestClient(
+        create_dashboard_app(backend, Evolution(), session_secret=SECRET)
+    )
+    csrf = login(client)
+    assert client.get("/dashboard/api/auth/me").json()["must_change_password"] is True
+    assert client.get("/dashboard/api/handover").status_code == 403
+    changed = client.post(
+        "/dashboard/api/auth/change-password",
+        json={"current_password": "password-admin", "password": "new-password1"},
+        headers={"X-CSRF": csrf},
+    )
+    assert changed.status_code == 204
     assert client.get("/dashboard/api/auth/me").status_code == 401
 
 

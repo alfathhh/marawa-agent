@@ -38,12 +38,18 @@ def _decode(value: str) -> bytes:
 
 
 def issue_session(
-    uid: int, role: str, secret: str, *, now: int | None = None, ttl: int = 43_200
+    uid: int,
+    role: str,
+    secret: str,
+    *,
+    version: int = 1,
+    now: int | None = None,
+    ttl: int = 43_200,
 ):
     now = int(time.time()) if now is None else now
     csrf = _b64(os.urandom(18))
     payload = json.dumps(
-        {"uid": uid, "role": role, "csrf": csrf, "exp": now + ttl},
+        {"uid": uid, "role": role, "version": version, "csrf": csrf, "exp": now + ttl},
         sort_keys=True,
         separators=(",", ":"),
     ).encode()

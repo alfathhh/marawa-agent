@@ -4,7 +4,7 @@ import re
 
 from sqlalchemy import text
 
-from operational.dashboard_security import hash_password
+from operational.dashboard_security import hash_password, verify_password
 from operational.handover import HandoverStore
 
 _USERNAME = re.compile(r"^[A-Za-z0-9_.-]{3,64}$")
@@ -36,13 +36,16 @@ class DashboardBackend:
             {"actor": actor_id, "action": action, "target": target},
         )
 
+    def audit(self, actor_id: int | None, action: str, target: str) -> None:
+        self._audit(actor_id, action, target)
+
     def authenticate(self, username: str) -> dict | None:
         if not isinstance(username, str):
             return None
         row = (
             self.connection.execute(
                 text(
-                    "SELECT id, username, password_hash, role, active FROM dashboard_users WHERE username=:username"
+                    "SELECT id, username, password_hash, role, active, session_version, must_change_password FROM dashboard_users WHERE username=:username"
                 ),
                 {"username": username},
             )
@@ -54,7 +57,9 @@ class DashboardBackend:
     def session_user(self, user_id: int) -> dict | None:
         row = (
             self.connection.execute(
-                text("SELECT id, role, active FROM dashboard_users WHERE id=:id"),
+                text(
+                    "SELECT id, role, active, session_version, must_change_password FROM dashboard_users WHERE id=:id"
+                ),
                 {"id": user_id},
             )
             .mappings()
@@ -69,7 +74,7 @@ class DashboardBackend:
         return [dict(row) for row in rows]
 
     def create_user(self, body: dict, actor_id: int | None = None) -> dict:
-        if not isinstance(body, dict):
+        if not isinstance(body, dict) or set(body) != {"username", "password", "role"}:
             raise ValueError("invalid user")
         username, role = body.get("username"), body.get("role")
         if not isinstance(username, str) or not _USERNAME.fullmatch(username):
@@ -91,6 +96,112 @@ class DashboardBackend:
         )
         self._audit(actor_id, "user.create", str(row["id"]))
         return dict(row)
+
+    def change_password(
+        self, user_id: int, body: dict, actor_id: int | None = None
+    ) -> dict:
+        if not isinstance(body, dict) or set(body) != {"current_password", "password"}:
+            raise ValueError("invalid password change")
+        current = self.connection.execute(
+            text("SELECT password_hash FROM dashboard_users WHERE id=:id"),
+            {"id": user_id},
+        ).scalar_one_or_none()
+        if not current or not verify_password(body["current_password"], current):
+            raise ValueError("invalid current password")
+        return self._update_password(
+            user_id, body["password"], False, actor_id, "user.password.change"
+        )
+
+    def reset_password(
+        self, user_id: int, body: dict, actor_id: int | None = None
+    ) -> dict:
+        if not isinstance(body, dict) or set(body) != {"password"}:
+            raise ValueError("invalid password reset")
+        return self._update_password(
+            user_id, body["password"], True, actor_id, "user.password.reset"
+        )
+
+    def _update_password(self, user_id, password, temporary, actor_id, action):
+        row = (
+            self.connection.execute(
+                text(
+                    """UPDATE dashboard_users SET password_hash=:hash, must_change_password=:temporary, session_version=session_version + 1 WHERE id=:id RETURNING id, role, active, session_version, must_change_password"""
+                ),
+                {
+                    "id": user_id,
+                    "hash": hash_password(password),
+                    "temporary": temporary,
+                },
+            )
+            .mappings()
+            .first()
+        )
+        if not row:
+            raise ValueError("unknown user")
+        self._audit(actor_id, action, str(user_id))
+        return dict(row)
+
+    def set_user_active(
+        self, user_id: int, body: dict, actor_id: int | None = None
+    ) -> dict:
+        if (
+            not isinstance(body, dict)
+            or set(body) != {"active"}
+            or not isinstance(body["active"], bool)
+        ):
+            raise ValueError("invalid active state")
+        active = body["active"]
+        if not active and user_id == actor_id:
+            raise ValueError("cannot disable self")
+        row = (
+            self.connection.execute(
+                text(
+                    "SELECT role, active FROM dashboard_users WHERE id=:id FOR UPDATE"
+                ),
+                {"id": user_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not row:
+            raise ValueError("unknown user")
+        if (
+            not active
+            and row["role"] == "superadmin"
+            and row["active"]
+            and self.connection.execute(
+                text(
+                    "SELECT count(*) FROM dashboard_users WHERE role='superadmin' AND active"
+                )
+            ).scalar_one()
+            <= 1
+        ):
+            raise ValueError("cannot disable last superadmin")
+        changed = (
+            self.connection.execute(
+                text(
+                    """UPDATE dashboard_users SET active=:active, session_version=session_version + 1 WHERE id=:id AND active IS DISTINCT FROM :active RETURNING id, username, role, active, session_version, must_change_password"""
+                ),
+                {"id": user_id, "active": active},
+            )
+            .mappings()
+            .first()
+        )
+        if changed:
+            self._audit(
+                actor_id, "user.activate" if active else "user.deactivate", str(user_id)
+            )
+            return dict(changed)
+        return dict(
+            self.connection.execute(
+                text(
+                    "SELECT id, username, role, active, session_version, must_change_password FROM dashboard_users WHERE id=:id"
+                ),
+                {"id": user_id},
+            )
+            .mappings()
+            .one()
+        )
 
     def get_settings(self) -> dict:
         rows = self.connection.execute(

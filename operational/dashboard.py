@@ -1,5 +1,8 @@
+import json
+from json import JSONDecodeError
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +16,19 @@ from operational.dashboard_security import (
 
 COOKIE = "marawa_session"
 STATIC = Path(__file__).with_name("static")
+MAX_JSON_BODY = 65_536
+SETTINGS = {
+    "BOT_ENABLED",
+    "SERVICE_HOURS",
+    "ADMIN_CLAIM_TIMEOUT_MIN",
+    "ADMIN_FIRST_REPLY_TIMEOUT_MIN",
+    "ADMIN_IDLE_RELEASE_MIN",
+    "USER_IDLE_WARNING_MIN",
+    "USER_IDLE_CLOSE_MIN",
+    "USER_IDLE_IN_HANDOVER_MIN",
+    "HANDOVER_REBROADCAST",
+}
+TIMEOUTS = {key for key in SETTINGS if key.endswith("_MIN")}
 
 
 def create_dashboard_app(
@@ -30,6 +46,10 @@ def create_dashboard_app(
     @app.exception_handler(ValueError)
     async def invalid_request(request: Request, exc: ValueError):
         return JSONResponse({"detail": "Permintaan tidak valid"}, status_code=422)
+
+    @app.exception_handler(Exception)
+    async def internal_error(request: Request, exc: Exception):
+        return JSONResponse({"detail": "Kesalahan internal"}, status_code=500)
 
     @app.middleware("http")
     async def security(request: Request, call_next):
@@ -55,7 +75,34 @@ def create_dashboard_app(
         "/dashboard/static", StaticFiles(directory=STATIC), name="dashboard-static"
     )
 
-    def auth(request: Request, *, superadmin=False, mutate=False):
+    async def json_body(request: Request) -> dict:
+        chunks, size = [], 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > MAX_JSON_BODY:
+                raise HTTPException(413, "Permintaan terlalu besar")
+            chunks.append(chunk)
+        try:
+            body = json.loads(b"".join(chunks))
+        except (JSONDecodeError, UnicodeDecodeError):
+            raise HTTPException(400, "Permintaan tidak valid") from None
+        if not isinstance(body, dict):
+            raise ValueError("invalid JSON object")
+        return body
+
+    def exact(body, fields, required=None):
+        if set(body) - set(fields) or not set(required or fields) <= set(body):
+            raise ValueError("invalid schema")
+        return body
+
+    def audit(actor_id, action, target):
+        hook = getattr(backend, "audit", None)
+        if callable(hook):
+            hook(actor_id, action, target)
+
+    def auth(
+        request: Request, *, superadmin=False, mutate=False, allow_temporary=False
+    ):
         session = verify_request(
             request.cookies.get(COOKIE, ""),
             request.headers.get("X-CSRF"),
@@ -69,8 +116,11 @@ def create_dashboard_app(
             not current
             or not current.get("active")
             or current.get("role") != session["role"]
+            or current.get("session_version", 1) != session.get("version", 1)
         ):
             raise HTTPException(401, "Sesi tidak valid")
+        if current.get("must_change_password") and not allow_temporary:
+            raise HTTPException(403, "Password sementara wajib diganti")
         if superadmin and session["role"] != "superadmin":
             raise HTTPException(403, "Khusus superadmin")
         return session
@@ -81,15 +131,29 @@ def create_dashboard_app(
 
     @app.post("/dashboard/api/auth/login")
     async def login(request: Request):
-        body = await request.json()
-        user = backend.authenticate(body.get("username"))
+        body = await json_body(request)
+        if not body:
+            raise HTTPException(401, "Kredensial tidak valid")
+        exact(body, {"username", "password"})
+        if not isinstance(body["username"], str) or not isinstance(
+            body["password"], str
+        ):
+            raise ValueError("invalid credentials schema")
+        user = backend.authenticate(body["username"])
         if (
             not user
             or not user.get("active")
-            or not verify_password(body.get("password", ""), user["password_hash"])
+            or not verify_password(body["password"], user["password_hash"])
         ):
+            audit(None, "dashboard.login.failure", body["username"])
             raise HTTPException(401, "Kredensial tidak valid")
-        token, csrf = issue_session(user["id"], user["role"], session_secret)
+        audit(user["id"], "dashboard.login.success", str(user["id"]))
+        token, csrf = issue_session(
+            user["id"],
+            user["role"],
+            session_secret,
+            version=user.get("session_version", 1),
+        )
         response = Response(
             content='{"csrf":"' + csrf + '"}', media_type="application/json"
         )
@@ -105,12 +169,27 @@ def create_dashboard_app(
 
     @app.get("/dashboard/api/auth/me")
     def me(request: Request):
-        user = auth(request)
-        return {"id": user["uid"], "role": user["role"]}
+        user = auth(request, allow_temporary=True)
+        current = backend.session_user(user["uid"])
+        return {
+            "id": user["uid"],
+            "role": user["role"],
+            "must_change_password": current.get("must_change_password", False),
+        }
 
     @app.post("/dashboard/api/auth/logout", status_code=204)
     def logout(request: Request):
-        auth(request, mutate=True)
+        user = auth(request, mutate=True, allow_temporary=True)
+        audit(user["uid"], "dashboard.logout", str(user["uid"]))
+        response = Response(status_code=204)
+        response.delete_cookie(COOKIE)
+        return response
+
+    @app.post("/dashboard/api/auth/change-password")
+    async def change_password(request: Request):
+        user = auth(request, mutate=True, allow_temporary=True)
+        body = exact(await json_body(request), {"current_password", "password"})
+        backend.change_password(user["uid"], body, actor_id=user["uid"])
         response = Response(status_code=204)
         response.delete_cookie(COOKIE)
         return response
@@ -118,7 +197,6 @@ def create_dashboard_app(
     @app.get("/dashboard/api/handover")
     def queue(request: Request):
         user = auth(request)
-        rows = backend.list_handover()
         return [
             {
                 **row,
@@ -126,28 +204,44 @@ def create_dashboard_app(
                 if user["role"] == "superadmin"
                 else mask_phone(row["phone"]),
             }
-            for row in rows
+            for row in backend.list_handover()
         ]
 
-    def action(request, action, code, body):
+    def action(request, action_name, code, body):
         user = auth(request, mutate=True)
-        return backend.handover_action(action, code, user["uid"], body)
+        if action_name == "claim":
+            exact(body, set())
+        elif action_name in {"release", "resolve"}:
+            exact(body, {"generation"})
+            if isinstance(body["generation"], bool) or not isinstance(
+                body["generation"], int
+            ):
+                raise ValueError("invalid generation")
+        else:
+            exact(body, {"generation", "message"})
+            if (
+                isinstance(body["generation"], bool)
+                or not isinstance(body["generation"], int)
+                or not isinstance(body["message"], str)
+            ):
+                raise ValueError("invalid send")
+        return backend.handover_action(action_name, code, user["uid"], body)
 
     @app.post("/dashboard/api/handover/{code}/claim")
     async def claim(code: str, request: Request):
-        return action(request, "claim", code, await request.json())
+        return action(request, "claim", code, await json_body(request))
 
     @app.post("/dashboard/api/handover/{code}/release")
     async def release(code: str, request: Request):
-        return action(request, "release", code, await request.json())
+        return action(request, "release", code, await json_body(request))
 
     @app.post("/dashboard/api/handover/{code}/resolve")
     async def resolve(code: str, request: Request):
-        return action(request, "resolve", code, await request.json())
+        return action(request, "resolve", code, await json_body(request))
 
     @app.post("/dashboard/api/handover/{code}/send")
     async def send(code: str, request: Request):
-        return action(request, "send", code, await request.json())
+        return action(request, "send", code, await json_body(request))
 
     @app.get("/dashboard/api/users")
     def users(request: Request):
@@ -156,8 +250,23 @@ def create_dashboard_app(
 
     @app.post("/dashboard/api/users", status_code=201)
     async def create_user(request: Request):
-        auth(request, superadmin=True, mutate=True)
-        return backend.create_user(await request.json())
+        user = auth(request, superadmin=True, mutate=True)
+        body = exact(await json_body(request), {"username", "role", "password"})
+        if not all(isinstance(body[key], str) for key in body):
+            raise ValueError("invalid user")
+        return backend.create_user(body, actor_id=user["uid"])
+
+    @app.post("/dashboard/api/users/{user_id}/reset-password")
+    async def reset_password(user_id: int, request: Request):
+        user = auth(request, superadmin=True, mutate=True)
+        body = exact(await json_body(request), {"password"})
+        return backend.reset_password(user_id, body, actor_id=user["uid"])
+
+    @app.patch("/dashboard/api/users/{user_id}")
+    async def set_user_active(user_id: int, request: Request):
+        user = auth(request, superadmin=True, mutate=True)
+        body = exact(await json_body(request), {"active"})
+        return backend.set_user_active(user_id, body, actor_id=user["uid"])
 
     @app.get("/dashboard/api/settings")
     def settings(request: Request):
@@ -166,22 +275,49 @@ def create_dashboard_app(
 
     @app.put("/dashboard/api/settings")
     async def set_settings(request: Request):
-        auth(request, superadmin=True, mutate=True)
-        return backend.set_settings(await request.json())
+        user = auth(request, superadmin=True, mutate=True)
+        body = await json_body(request)
+        if not body or set(body) - SETTINGS:
+            raise ValueError("invalid settings")
+        for key, value in body.items():
+            if key in TIMEOUTS and (
+                isinstance(value, bool) or not isinstance(value, int)
+            ):
+                raise ValueError("invalid timeout")
+            if key in {"BOT_ENABLED", "HANDOVER_REBROADCAST"} and not isinstance(
+                value, bool
+            ):
+                raise ValueError("invalid boolean")
+            if key == "SERVICE_HOURS" and not isinstance(value, (dict, list, str)):
+                raise ValueError("invalid service hours")
+        return backend.set_settings(body, actor_id=user["uid"])
+
+    async def evolution_call(operation):
+        try:
+            result = await operation()
+        except httpx.HTTPError:
+            raise HTTPException(502, "Layanan Evolution tidak tersedia") from None
+        if isinstance(result, dict) and "error" in result:
+            raise HTTPException(502, "Layanan Evolution tidak tersedia")
+        return result
 
     @app.get("/dashboard/api/ops/evolution/status")
     async def status(request: Request):
         auth(request, superadmin=True)
-        return await evolution.connection_status()
+        return await evolution_call(evolution.connection_status)
 
     @app.post("/dashboard/api/ops/evolution/qr")
     async def qr(request: Request):
-        auth(request, superadmin=True, mutate=True)
-        return await evolution.pairing_qr()
+        user = auth(request, superadmin=True, mutate=True)
+        result = await evolution_call(evolution.pairing_qr)
+        audit(user["uid"], "dashboard.evolution.qr", "evolution")
+        return result
 
     @app.post("/dashboard/api/ops/evolution/logout")
     async def evolution_logout(request: Request):
-        auth(request, superadmin=True, mutate=True)
-        return await evolution.logout()
+        user = auth(request, superadmin=True, mutate=True)
+        result = await evolution_call(evolution.logout)
+        audit(user["uid"], "dashboard.evolution.logout", "evolution")
+        return result
 
     return app
