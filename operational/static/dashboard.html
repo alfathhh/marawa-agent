@@ -15,6 +15,7 @@
       <button data-view="inbox" aria-current="page">Inbox</button>
       <button data-view="settings">Pengaturan</button>
       <button data-view="users">Pengguna</button>
+      <button data-view="knowledge">Basis Pengetahuan</button>
       <button id="logout">Keluar</button>
     </nav>
     <section id="inbox" class="layout">
@@ -23,6 +24,7 @@
     </section>
     <section id="settings" hidden><h1>Pengaturan operasional</h1><p>Status instance, pairing QR, jam layanan, bot, dan timeout dikelola superadmin.</p><button id="check-wa">Periksa WhatsApp</button><button id="pair-wa">Tampilkan QR</button><div id="qr" aria-live="polite"></div><form id="settings-form"><label for="claim-timeout">Timeout klaim (menit)</label><input id="claim-timeout" type="number" min="1" max="1440" value="5"><label><input id="bot-enabled" type="checkbox" checked> Bot aktif</label><button>Simpan pengaturan</button><p id="settings-status" role="status"></p></form></section>
     <section id="users" hidden><h1>Pengguna</h1><p>Superadmin dapat menambah petugas dan superadmin serta menonaktifkan akun.</p><form id="user-form"><label for="new-username">Nama pengguna</label><input id="new-username" required minlength="3"><label for="new-password">Password sementara</label><input id="new-password" type="password" required minlength="10"><label for="new-role">Peran</label><select id="new-role"><option value="petugas">Petugas</option><option value="superadmin">Superadmin</option></select><button>Tambah pengguna</button></form><div id="user-list" aria-live="polite"></div><h2>Ganti password</h2><form id="password-form"><label for="current-password">Password saat ini</label><input id="current-password" type="password" required><label for="next-password">Password baru</label><input id="next-password" type="password" required minlength="10"><button>Ganti password</button><p id="password-status" role="status"></p></form></section>
+    <section id="knowledge" hidden><h1>Basis Pengetahuan</h1><strong role="alert">BELUM DIVERIFIKASI — entri DUMMY bukan fakta layanan.</strong><label for="knowledge-select">Entri</label><select id="knowledge-select"></select><form id="knowledge-form"><label for="knowledge-title">Judul</label><input id="knowledge-title" maxlength="200" required><label for="knowledge-content">Konten</label><textarea id="knowledge-content" maxlength="20000" required></textarea><label for="knowledge-source">URL sumber BPS (opsional)</label><input id="knowledge-source" type="url"><label for="knowledge-status">Status</label><select id="knowledge-status"><option>DUMMY</option><option>VERIFIED</option></select><button>Simpan</button><p id="knowledge-message" role="status"></p></form></section>
     </div>
   </main>
   <script src="/dashboard/static/dashboard.js" defer></script>

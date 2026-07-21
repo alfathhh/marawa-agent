@@ -1,0 +1,136 @@
+name: marawa
+
+x-marawa: &marawa
+  build: .
+  restart: unless-stopped
+  env_file: .env
+  environment: &marawa-env
+    DATABASE_URL: postgresql+psycopg://${MARAWA_DB_USER:-marawa}:${MARAWA_DB_PASSWORD:?set MARAWA_DB_PASSWORD}@db:5432/${MARAWA_DB_NAME:-marawa}
+    EVOLUTION_API_URL: http://evolution:8080
+    EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:?set EVOLUTION_API_KEY}
+    EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-marawa}
+    WEBHOOK_SECRET: ${WEBHOOK_SECRET:?set WEBHOOK_SECRET}
+    DASHBOARD_SESSION_SECRET: ${DASHBOARD_SESSION_SECRET:?set DASHBOARD_SESSION_SECRET}
+    DASHBOARD_ORIGIN: ${DASHBOARD_ORIGIN:-http://localhost:8020}
+    APP_ENV: ${APP_ENV:-production}
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MARAWA_DB_NAME:-marawa}
+      POSTGRES_USER: ${MARAWA_DB_USER:-marawa}
+      POSTGRES_PASSWORD: ${MARAWA_DB_PASSWORD:?set MARAWA_DB_PASSWORD}
+    volumes:
+      - marawa-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *marawa
+    restart: "no"
+    command: ["sh", "scripts/start.sh", "migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    <<: *marawa
+    command: ["sh", "scripts/start.sh", "app"]
+    ports:
+      - "127.0.0.1:8020:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      evolution:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/dashboard', timeout=2)\""]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    deploy:
+      replicas: 1
+
+  worker:
+    <<: *marawa
+    command: ["sh", "scripts/start.sh", "worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      evolution:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+
+  evolution-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EVOLUTION_DB_NAME:-evolution}
+      POSTGRES_USER: ${EVOLUTION_DB_USER:-evolution}
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?set EVOLUTION_DB_PASSWORD}
+    volumes:
+      - evolution-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - evolution-redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:8080"
+    environment:
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?set EVOLUTION_API_KEY}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_DB_USER:-evolution}:${EVOLUTION_DB_PASSWORD:?set EVOLUTION_DB_PASSWORD}@evolution-db:5432/${EVOLUTION_DB_NAME:-evolution}
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_LOCAL_ENABLED: "false"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: http://app:8080/webhooks/evolution
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_GLOBAL_HEADERS: '{"X-Webhook-Secret":"${WEBHOOK_SECRET:?set WEBHOOK_SECRET}"}'
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+      WEBHOOK_EVENTS_MESSAGES_UPDATE: "true"
+    volumes:
+      - evolution-instances:/evolution/instances
+    depends_on:
+      evolution-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+volumes:
+  marawa-db:
+  evolution-db:
+  evolution-redis:
+  evolution-instances:

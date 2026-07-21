@@ -5,7 +5,9 @@ def _official(url):
     try:
         parsed = urlparse(url)
         return parsed.scheme == "https" and (
-            parsed.hostname == "bps.go.id" or parsed.hostname.endswith(".bps.go.id")
+            parsed.hostname == "bps.go.id"
+            or parsed.hostname.endswith(".bps.go.id")
+            or parsed.hostname == "s.bps.go.id"
         )
     except (AttributeError, ValueError):
         return False

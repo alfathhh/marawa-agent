@@ -22,6 +22,7 @@ def create_webhook_app(
     app = FastAPI()
 
     @app.post("/webhook")
+    @app.post("/evolution")
     async def webhook(request: Request):
         supplied = request.headers.get("X-Webhook-Secret", "")
         if not hmac.compare_digest(supplied.encode(), webhook_secret.encode()):

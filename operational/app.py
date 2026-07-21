@@ -51,7 +51,7 @@ def create_app(
         secure_cookie=production,
         allowed_origin=allowed_origin,
     )
-    app.mount("/hooks", webhook)
+    app.mount("/webhooks", webhook)
     app.mount("/", dashboard)
 
     transaction_lock = asyncio.Lock()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 from sqlalchemy import text
 
@@ -231,6 +232,70 @@ class DashboardBackend:
             )
             self._audit(actor_id, "settings.set", key)
         return self.get_settings()
+
+    def list_knowledge(self) -> list[dict]:
+        rows = self.connection.execute(
+            text("""
+            SELECT key, title, content, source_url, status, updated_at, updated_by
+            FROM knowledge_base ORDER BY key
+        """)
+        ).mappings()
+        return [dict(row) for row in rows]
+
+    def update_knowledge(self, key: str, body: dict, actor_id: int) -> dict:
+        fields = {"title", "content", "source_url", "status"}
+        if (
+            not isinstance(key, str)
+            or not isinstance(body, dict)
+            or set(body) != fields
+        ):
+            raise ValueError("invalid knowledge")
+        title, content, source_url, status = (
+            body[name] for name in ("title", "content", "source_url", "status")
+        )
+        if not isinstance(title, str) or not 1 <= len(title) <= 200:
+            raise ValueError("invalid title")
+        if not isinstance(content, str) or not 1 <= len(content) <= 20_000:
+            raise ValueError("invalid content")
+        if status not in {"DUMMY", "VERIFIED"} or not self._valid_source_url(
+            source_url
+        ):
+            raise ValueError("invalid knowledge")
+        row = (
+            self.connection.execute(
+                text("""
+            UPDATE knowledge_base SET title=:title, content=:content, source_url=:source_url,
+                status=:status, updated_at=now(), updated_by=:actor
+            WHERE key=:key
+            RETURNING key, title, content, source_url, status, updated_at, updated_by
+        """),
+                {**body, "key": key, "actor": actor_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not row:
+            raise ValueError("unknown knowledge")
+        self._audit(actor_id, "knowledge.update", key)
+        return dict(row)
+
+    @staticmethod
+    def _valid_source_url(value) -> bool:
+        if value is None:
+            return True
+        if not isinstance(value, str):
+            return False
+        parsed = urlsplit(value)
+        return (
+            parsed.scheme == "https"
+            and parsed.hostname is not None
+            and (
+                parsed.hostname == "bps.go.id" or parsed.hostname.endswith(".bps.go.id")
+            )
+            and not parsed.username
+            and not parsed.password
+            and parsed.port in (None, 443)
+        )
 
     def list_handover(self) -> list[dict]:
         rows = self.connection.execute(

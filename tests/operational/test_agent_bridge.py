@@ -71,6 +71,27 @@ def test_bridge_rejects_unofficial_source_and_retries_without_outbound():
     assert store.failed == [("wamid-2", "w2", "invalid_agent_output")]
 
 
+def test_bridge_accepts_official_bps_shortlink():
+    async def shortlink(text, phone):
+        return {
+            "text": "Silakan isi Buku Tamu.",
+            "sources": [
+                {"title": "Buku Tamu BPS", "url": "https://s.bps.go.id/tamu1306"}
+            ],
+        }
+
+    store = Store()
+    row = {
+        "event_id": "wamid-short",
+        "phone": "628123456789",
+        "body": "konsultasi",
+        "claim_token": "w-short",
+    }
+
+    assert asyncio.run(process_inbound(store, shortlink, row)) == "DONE"
+    assert "https://s.bps.go.id/tamu1306" in store.outbound[0][1]
+
+
 def test_runtime_exception_is_safe_and_does_not_lose_inbound():
     async def broken(text, phone):
         raise RuntimeError("secret provider trace")

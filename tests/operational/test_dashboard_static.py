@@ -11,6 +11,14 @@ def test_dashboard_shell_has_required_views_and_accessibility_hooks():
 
     for value in ("Inbox", "Pengaturan", "Pengguna", "aria-live", "Balasan petugas"):
         assert value in html
+    for value in (
+        "Basis Pengetahuan",
+        "BELUM DIVERIFIKASI",
+        "knowledge-form",
+        "knowledge-content",
+    ):
+        assert value in html
+    assert "/dashboard/api/knowledge" in js
     assert "textContent" in js and "innerHTML" not in js
     assert "min-height:44px" in css
     assert "100dvh" in css

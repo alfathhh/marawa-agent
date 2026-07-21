@@ -268,6 +268,27 @@ def create_dashboard_app(
         body = exact(await json_body(request), {"active"})
         return backend.set_user_active(user_id, body, actor_id=user["uid"])
 
+    @app.get("/dashboard/api/knowledge")
+    def knowledge(request: Request):
+        auth(request, superadmin=True)
+        return backend.list_knowledge()
+
+    @app.put("/dashboard/api/knowledge/{key}")
+    async def update_knowledge(key: str, request: Request):
+        user = auth(request, superadmin=True, mutate=True)
+        body = exact(
+            await json_body(request), {"title", "content", "source_url", "status"}
+        )
+        if (
+            not isinstance(body["title"], str)
+            or not isinstance(body["content"], str)
+            or body["source_url"] is not None
+            and not isinstance(body["source_url"], str)
+            or body["status"] not in {"DUMMY", "VERIFIED"}
+        ):
+            raise ValueError("invalid knowledge")
+        return backend.update_knowledge(key, body, actor_id=user["uid"])
+
     @app.get("/dashboard/api/settings")
     def settings(request: Request):
         auth(request, superadmin=True)

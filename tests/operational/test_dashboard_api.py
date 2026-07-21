@@ -61,6 +61,21 @@ class Backend:
     def set_user_active(self, user_id, body, actor_id=None):
         return {"id": user_id, "active": body["active"]}
 
+    def list_knowledge(self):
+        return [
+            {
+                "key": "dummy.pst.services",
+                "title": "Layanan (DUMMY)",
+                "content": "Belum diverifikasi",
+                "source_url": None,
+                "status": "DUMMY",
+            }
+        ]
+
+    def update_knowledge(self, key, body, actor_id=None):
+        self.actions.append(("knowledge", key, body, actor_id))
+        return {"key": key, **body, "updated_by": actor_id}
+
 
 class Evolution:
     async def connection_status(self):
@@ -172,6 +187,42 @@ def test_superadmin_users_settings_and_evolution_ops():
             "/dashboard/api/ops/evolution/logout", headers={"X-CSRF": csrf}
         ).json()["state"]
         == "disconnected"
+    )
+
+
+def test_superadmin_can_list_and_edit_knowledge():
+    backend = Backend()
+    client = TestClient(
+        create_dashboard_app(backend, Evolution(), session_secret=SECRET)
+    )
+    csrf = login(client)
+
+    assert client.get("/dashboard/api/knowledge").json()[0]["status"] == "DUMMY"
+    body = {"title": "Layanan", "content": "Isi", "source_url": None, "status": "DUMMY"}
+    response = client.put(
+        "/dashboard/api/knowledge/dummy.pst.services",
+        json=body,
+        headers={"X-CSRF": csrf},
+    )
+
+    assert response.status_code == 200
+    assert backend.actions[-1] == ("knowledge", "dummy.pst.services", body, 1)
+
+
+def test_petugas_cannot_read_or_edit_knowledge():
+    backend = Backend()
+    backend.users["admin"]["role"] = "petugas"
+    client = TestClient(
+        create_dashboard_app(backend, Evolution(), session_secret=SECRET)
+    )
+    csrf = login(client)
+
+    assert client.get("/dashboard/api/knowledge").status_code == 403
+    assert (
+        client.put(
+            "/dashboard/api/knowledge/x", json={}, headers={"X-CSRF": csrf}
+        ).status_code
+        == 403
     )
 
 
