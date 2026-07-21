@@ -46,14 +46,22 @@ def test_ignores_from_me_group_invalid_phone_and_unsupported_media():
 
 
 def test_parses_delivery_receipts_from_known_evolution_shapes():
-    assert parse_event({
-        "event": "messages.update",
-        "data": {"key": {"id": "provider-1"}, "update": {"status": 3}},
-    }) == {"kind": "delivery", "provider_message_id": "provider-1", "status": "DELIVERY_ACK"}
-    assert parse_event({
-        "event": "messages.update",
-        "data": {"keyId": "provider-2", "status": "ERROR"},
-    }) == {"kind": "delivery", "provider_message_id": "provider-2", "status": "ERROR"}
+    assert parse_event(
+        {
+            "event": "messages.update",
+            "data": {"key": {"id": "provider-1"}, "update": {"status": 3}},
+        }
+    ) == {
+        "kind": "delivery",
+        "provider_message_id": "provider-1",
+        "status": "DELIVERY_ACK",
+    }
+    assert parse_event(
+        {
+            "event": "messages.update",
+            "data": {"keyId": "provider-2", "status": "ERROR"},
+        }
+    ) == {"kind": "delivery", "provider_message_id": "provider-2", "status": "ERROR"}
 
 
 def test_delivery_status_is_monotonic_but_new_error_evidence_is_preserved():
@@ -119,7 +127,9 @@ def test_connection_status_is_normalized():
         transport = httpx.MockTransport(
             lambda request: httpx.Response(200, json={"instance": {"state": "open"}})
         )
-        async with httpx.AsyncClient(base_url="https://evolution.example", transport=transport) as http:
+        async with httpx.AsyncClient(
+            base_url="https://evolution.example", transport=transport
+        ) as http:
             return await EvolutionClient(http, "secret", "marawa").connection_status()
 
     assert asyncio.run(run()) == {"instance": "marawa", "state": "connected"}
@@ -127,19 +137,27 @@ def test_connection_status_is_normalized():
 
 def test_pairing_qr_accepts_only_valid_png_data_url():
     import base64
+
     png = base64.b64encode(b"\x89PNG\r\n\x1a\nsmall").decode()
 
     async def run(payload):
-        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
-        async with httpx.AsyncClient(base_url="https://evolution.example", transport=transport) as http:
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload)
+        )
+        async with httpx.AsyncClient(
+            base_url="https://evolution.example", transport=transport
+        ) as http:
             return await EvolutionClient(http, "secret", "marawa").pairing_qr()
 
     assert asyncio.run(run({"base64": png})) == {
-        "instance": "marawa", "state": "connecting",
+        "instance": "marawa",
+        "state": "connecting",
         "qr": "data:image/png;base64," + png,
     }
     assert asyncio.run(run({"base64": base64.b64encode(b"not-png").decode()})) == {
-        "instance": "marawa", "state": "connecting", "qr": None,
+        "instance": "marawa",
+        "state": "connecting",
+        "qr": None,
     }
 
 
@@ -152,7 +170,9 @@ def test_logout_uses_instance_endpoint_and_returns_disconnected():
         return httpx.Response(200, json={})
 
     async def run():
-        async with httpx.AsyncClient(base_url="https://evolution.example", transport=httpx.MockTransport(handler)) as http:
+        async with httpx.AsyncClient(
+            base_url="https://evolution.example", transport=httpx.MockTransport(handler)
+        ) as http:
             return await EvolutionClient(http, "secret", "marawa").logout()
 
     assert asyncio.run(run()) == {"instance": "marawa", "state": "disconnected"}

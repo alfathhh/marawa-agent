@@ -49,7 +49,31 @@ def test_duplicate_inbound_is_admitted_once(connection):
 
     assert first == "pending"
     assert duplicate == "duplicate"
-    assert connection.execute(text("select count(*) from inbound_events")).scalar_one() == 1
+    assert (
+        connection.execute(text("select count(*) from inbound_events")).scalar_one()
+        == 1
+    )
+
+
+def test_inbound_claim_stale_recovery_and_bounded_failure(connection):
+    store = Store(connection)
+    store.admit_inbound("wamid-in", "628123456789", "Halo")
+    first = store.claim_inbound("worker-old", limit=1)[0]
+    assert first["event_id"] == "wamid-in"
+    assert store.mark_inbound_done("wamid-in", "wrong") is False
+    connection.execute(
+        text(
+            "UPDATE inbound_events SET lease_until=now()-interval '1 second' WHERE event_id='wamid-in'"
+        )
+    )
+    second = store.claim_inbound("worker-new", limit=1)[0]
+    assert second["claim_token"] == "worker-new"
+    assert (
+        store.mark_inbound_failed(
+            "wamid-in", "worker-new", "agent_unavailable", max_attempts=2
+        )
+        == "DEAD"
+    )
 
 
 def test_outbox_dedupe_is_exact_and_nullable(connection):
@@ -73,9 +97,16 @@ def test_early_receipt_reconciles_when_provider_id_arrives(connection):
     result = store.mark_accepted(outbound_id, "provider-1")
 
     assert result == "DELIVERY_ACK"
-    row = connection.execute(text(
-        "select status, provider_message_id, delivered_at from outbound_messages where id=:id"
-    ), {"id": outbound_id}).mappings().one()
+    row = (
+        connection.execute(
+            text(
+                "select status, provider_message_id, delivered_at from outbound_messages where id=:id"
+            ),
+            {"id": outbound_id},
+        )
+        .mappings()
+        .one()
+    )
     assert row["status"] == "DELIVERY_ACK"
     assert row["provider_message_id"] == "provider-1"
     assert row["delivered_at"] is not None
@@ -109,10 +140,13 @@ def test_stale_lease_is_recovered_and_attempts_are_bounded(connection):
     store = Store(connection)
     outbound_id = store.enqueue_outbound("628333333333", "Halo", "c:1")
     assert store.claim_outbound("worker-dead", limit=1)[0]["id"] == outbound_id
-    connection.execute(text("""
+    connection.execute(
+        text("""
         UPDATE outbound_messages SET lease_until=now() - interval '1 second'
         WHERE id=:id
-    """), {"id": outbound_id})
+    """),
+        {"id": outbound_id},
+    )
 
     reclaimed = store.claim_outbound("worker-new", limit=1)
 
@@ -125,7 +159,16 @@ def test_failure_requeues_then_dead_letters_at_max_attempts(connection):
     outbound_id = store.enqueue_outbound("628444444444", "Halo", "d:1")
     store.claim_outbound("worker-1", limit=1)
 
-    assert store.mark_failed(outbound_id, "worker-1", "transport", max_attempts=2) == "QUEUED"
-    connection.execute(text("UPDATE outbound_messages SET available_at=now() WHERE id=:id"), {"id": outbound_id})
+    assert (
+        store.mark_failed(outbound_id, "worker-1", "transport", max_attempts=2)
+        == "QUEUED"
+    )
+    connection.execute(
+        text("UPDATE outbound_messages SET available_at=now() WHERE id=:id"),
+        {"id": outbound_id},
+    )
     store.claim_outbound("worker-2", limit=1)
-    assert store.mark_failed(outbound_id, "worker-2", "transport", max_attempts=2) == "DEAD"
+    assert (
+        store.mark_failed(outbound_id, "worker-2", "transport", max_attempts=2)
+        == "DEAD"
+    )

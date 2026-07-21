@@ -29,9 +29,13 @@ class Evolution:
 
 def test_worker_accepts_provider_response_and_keeps_claim_identity():
     store = Store([{"id": 1, "phone": "628123456789", "body": "Halo"}])
-    result = asyncio.run(deliver_batch(store, Evolution([
-        {"status": "ACCEPTED", "provider_message_id": "provider-1"}
-    ]), "worker-1"))
+    result = asyncio.run(
+        deliver_batch(
+            store,
+            Evolution([{"status": "ACCEPTED", "provider_message_id": "provider-1"}]),
+            "worker-1",
+        )
+    )
 
     assert result == {"accepted": 1, "failed": 0}
     assert store.accepted == [(1, "provider-1")]
@@ -40,9 +44,14 @@ def test_worker_accepts_provider_response_and_keeps_claim_identity():
 
 def test_worker_requeues_safe_provider_failure_without_leaking_detail():
     store = Store([{"id": 2, "phone": "628123456789", "body": "Halo"}])
-    result = asyncio.run(deliver_batch(store, Evolution([
-        {"error": {"code": "evolution_unavailable", "raw": "secret"}}
-    ]), "worker-2", max_attempts=3))
+    result = asyncio.run(
+        deliver_batch(
+            store,
+            Evolution([{"error": {"code": "evolution_unavailable", "raw": "secret"}}]),
+            "worker-2",
+            max_attempts=3,
+        )
+    )
 
     assert result == {"accepted": 0, "failed": 1}
     assert store.failed == [(2, "worker-2", "evolution_unavailable", 3)]
@@ -51,5 +60,6 @@ def test_worker_requeues_safe_provider_failure_without_leaking_detail():
 
 def test_empty_batch_is_noop():
     assert asyncio.run(deliver_batch(Store([]), Evolution([]), "worker")) == {
-        "accepted": 0, "failed": 0
+        "accepted": 0,
+        "failed": 0,
     }

@@ -21,10 +21,15 @@ class Store:
 
 
 def client(store=None, **kwargs):
-    return TestClient(create_webhook_app(
-        store or Store(), webhook_secret=SECRET, instance="marawa",
-        production=True, **kwargs,
-    ))
+    return TestClient(
+        create_webhook_app(
+            store or Store(),
+            webhook_secret=SECRET,
+            instance="marawa",
+            production=True,
+            **kwargs,
+        )
+    )
 
 
 def payload(event="messages.upsert"):
@@ -53,7 +58,12 @@ def test_rejects_missing_or_wrong_secret_without_side_effect():
     app = client(store)
 
     assert app.post("/webhook", json=payload()).status_code == 401
-    assert app.post("/webhook", json=payload(), headers={"X-Webhook-Secret": "x" * 32}).status_code == 401
+    assert (
+        app.post(
+            "/webhook", json=payload(), headers={"X-Webhook-Secret": "x" * 32}
+        ).status_code
+        == 401
+    )
     assert store.inbound == []
 
 
@@ -67,7 +77,9 @@ def test_rejects_oversize_malformed_non_object_and_wrong_instance():
     assert app.post("/webhook", json=[], headers=headers).status_code == 422
     wrong = payload()
     wrong["instance"] = "other"
-    assert client(store).post("/webhook", json=wrong, headers=headers).status_code == 403
+    assert (
+        client(store).post("/webhook", json=wrong, headers=headers).status_code == 403
+    )
     assert store.inbound == []
 
 
@@ -85,7 +97,8 @@ def test_admits_valid_inbound_before_success_response():
 def test_records_delivery_receipt_idempotently():
     store = Store()
     response = client(store).post(
-        "/webhook", json=payload("messages.update"),
+        "/webhook",
+        json=payload("messages.update"),
         headers={"X-Webhook-Secret": SECRET},
     )
 

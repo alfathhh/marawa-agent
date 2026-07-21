@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Marawa — Dashboard PST</title>
+  <link rel="stylesheet" href="/dashboard/static/dashboard.css">
+</head>
+<body>
+  <header><div><strong>Marawa</strong><small>Dashboard Pelayanan Statistik Terpadu</small></div><span id="wa-state" role="status">WhatsApp belum diperiksa</span></header>
+  <main>
+    <nav aria-label="Menu utama">
+      <button data-view="inbox" aria-current="page">Inbox</button>
+      <button data-view="settings">Pengaturan</button>
+      <button data-view="users">Pengguna</button>
+    </nav>
+    <section id="inbox" class="layout">
+      <aside><h1>Antrean bantuan</h1><ul id="queue" aria-live="polite"><li>Belum ada percakapan.</li></ul></aside>
+      <article><h2 id="chat-title">Pilih percakapan</h2><div id="messages" aria-live="polite"></div><form id="reply"><label for="reply-text">Balasan petugas</label><textarea id="reply-text" maxlength="4000" disabled></textarea><button disabled>Kirim via nomor bot</button></form></article>
+    </section>
+    <section id="settings" hidden><h1>Pengaturan operasional</h1><p>Status instance, pairing QR, webhook, jam layanan, dan timeout dikelola superadmin.</p><button id="check-wa">Periksa WhatsApp</button><button id="pair-wa">Tampilkan QR</button><div id="qr" aria-live="polite"></div></section>
+    <section id="users" hidden><h1>Pengguna</h1><p>Superadmin dapat menambah petugas dan superadmin serta menonaktifkan akun.</p><button id="add-user">Tambah pengguna</button><div id="user-list" aria-live="polite"></div></section>
+  </main>
+  <script src="/dashboard/static/dashboard.js" defer></script>
+</body>
+</html>
