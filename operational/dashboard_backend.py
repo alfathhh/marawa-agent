@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from urllib.parse import urlsplit
 
@@ -280,7 +281,7 @@ class DashboardBackend:
                     INSERT INTO settings (key, value) VALUES (:key, CAST(:value AS jsonb))
                     ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value
                 """),
-                {"key": key, "value": str(value)},
+                {"key": key, "value": json.dumps(value)},
             )
             self._audit(actor_id, "settings.set", key)
         return self.get_settings()
