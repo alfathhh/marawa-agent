@@ -122,11 +122,14 @@ def _parse_simdasi_catalog(payload, keyword, page):
 
 def _parse_glossary(data):
     items = data.get("items", data.get("data"))
+    if isinstance(items, list) and len(items) == 2 and isinstance(items[1], list):
+        items = items[1]
     if not isinstance(items, list):
         return safe_error("glossary_schema_error")
     try:
-        return {"found": bool(items), "items": [{"source_ref": f"glossary_{x['id']}", "concept": sanitize(x["konsep"]), "definition": sanitize(x["definisi"]), "indicator_title": sanitize(x.get("judulIndikator", "")), "unit": sanitize(x.get("satuan", "")), "source_content": sanitize(x.get("sumberKonten", "")), "source_url": "https://webapi.bps.go.id/documentation/#glosarium"} for x in items[:3]]}
-    except (KeyError, TypeError):
+        rows = [item.get("_source", item) for item in items[:3]]
+        return {"found": bool(rows), "items": [{"source_ref": f"glossary_{x['id']}", "concept": sanitize(x["konsep"]), "definition": sanitize(x["definisi"]), "indicator_title": sanitize(x.get("judulIndikator", "")), "unit": sanitize(x.get("satuan", "")), "source_content": sanitize(x.get("sumberKonten", "")), "source_url": "https://webapi.bps.go.id/documentation/#glosarium"} for x in rows]}
+    except (AttributeError, KeyError, TypeError):
         return safe_error("glossary_schema_error")
 
 

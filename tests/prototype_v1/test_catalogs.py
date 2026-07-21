@@ -1,5 +1,7 @@
 import asyncio
 
+import httpx
+
 from prototype_v1.bps_adapter import BPSAdapter
 from prototype_v1.catalog_service import (
     add_page,
@@ -58,6 +60,33 @@ def test_adapter_rejects_malformed_fixture_and_limits_remote_page():
     assert bad == {"error": {"code": "bps_schema_error"}}
     assert len(result["items"]) == 3
     assert result["has_more"] is True
+
+
+def test_live_simdasi_uses_interoperability_service_and_parses_official_envelope():
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={
+            "status": "OK",
+            "data": [{"page": 1}, {"data": [{
+                "id_tabel": "table-1",
+                "judul": "Jumlah Penduduk Kabupaten Padang Pariaman",
+                "subject": "Kependudukan",
+                "ketersediaan_tahun": [2024, 2023],
+            }]}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await BPSAdapter(api_key="secret", client=client).search("simdasi", "penduduk", 1)
+
+    result = asyncio.run(run())
+
+    assert "/interoperabilitas/datasource/simdasi/id/23/wilayah/1306000/key/secret" in seen["url"]
+    assert "domain=" not in seen["url"]
+    assert result["items"][0]["id"] == "table-1"
+    assert result["items"][0]["periods"] == ["2024", "2023"]
 
 
 def test_numbers_stably_across_pages_deduplicates_and_caps_frame_at_54():

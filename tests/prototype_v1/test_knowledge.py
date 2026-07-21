@@ -5,6 +5,7 @@ import httpx
 import pytest
 import yaml
 
+from prototype_v1.bps_adapter import BPSAdapter
 from prototype_v1.knowledge import (
     glossary_search,
     load_documents,
@@ -34,6 +35,27 @@ def test_glossary_returns_documented_fields_without_registering_indicator_value(
 
     assert result == {"found": True, "items": [{"source_ref": "glossary_4406", "concept": "Penduduk", "indicator_title": "", "definition": "Orang berusia 15 tahun atau lebih.", "unit": "", "source_content": "Glosarium Web API BPS", "source_url": "https://webapi.bps.go.id/documentation/#glosarium"}]}
     assert "value_decimal" not in result["items"][0]
+
+
+def test_adapter_parses_official_glossary_source_envelope():
+    adapter = BPSAdapter({"glossary": {
+        "status": "OK",
+        "data": [{"page": 1}, [{"_source": {
+            "id": "4406",
+            "konsep": "Agama",
+            "definisi": "Keyakinan terhadap Tuhan Yang Maha Esa.",
+            "judulIndikator": "",
+            "satuan": "",
+            "sumberKonten": "Metadata Management System",
+        }}]],
+    }}, app_env="test")
+
+    result = adapter.glossary("agama")
+
+    assert result["found"] is True
+    assert result["items"][0]["source_ref"] == "glossary_4406"
+    assert result["items"][0]["concept"] == "Agama"
+    assert result["items"][0]["definition"] == "Keyakinan terhadap Tuhan Yang Maha Esa."
 
 
 @pytest.mark.parametrize("query", ["", "x" * 501, 2])

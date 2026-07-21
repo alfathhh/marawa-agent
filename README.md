@@ -2,7 +2,7 @@
 
 > Indeks versi 1.0 · 21 Juli 2026
 
-Repository mandiri Marawa Agentic untuk membuktikan pencarian data resmi BPS domain `1306`, pengetahuan terverifikasi, dan analisis deterministik melalui web chat lokal. **Belum ada implementasi/deployment yang diklaim selesai.**
+Repository mandiri Marawa Agentic untuk membuktikan pencarian data resmi BPS domain `1306`, pengetahuan terverifikasi, dan analisis deterministik melalui web chat lokal. Prototype telah diimplementasikan dan lulus contract test; belum ada deployment production.
 
 ## Mulai dari mana
 
@@ -39,12 +39,12 @@ web chat → search SIMDASI + Dynamic + Publication
 
 | Sumber | Kontrak | Status live yang terverifikasi saat docs dibuat |
 |---|---|---|
-| SIMDASI | Web API BPS, adapter existing punya parser | Tidak diuji ulang dalam sesi docs ini |
-| Tabel Dinamis | Web API BPS resmi | Tidak diuji ulang dalam sesi docs ini |
-| Publikasi | Web API BPS resmi | Tidak diuji ulang dalam sesi docs ini |
-| Glosarium | Dokumentasi resmi memuat model/parameter/schema | Smoke request live menghasilkan HTTP 500 upstream; belum sehat terverifikasi |
+| SIMDASI | Interoperabilitas service ID 23, MFD `1306000` | Live sukses: HTTP 200/OK, katalog query `penduduk` menghasilkan kandidat |
+| Tabel Dinamis | Web API BPS resmi | Live sukses: HTTP 200/OK |
+| Publikasi | Web API BPS resmi | Live sukses: HTTP 200/OK |
+| Glosarium | List + detail sesuai URL yang dibentuk UI dokumentasi | Live gagal: HTTP 500 `Please re-check your URL Request`; fallback KB aktif |
 | SIRuSa | Portal resmi tersedia | API resmi belum terverifikasi; out of scope, tanpa scraper |
-| KB PST | File lokal harus verified PIC | PIC/tanggal signoff belum ditentukan |
+| KB PST | File lokal verified-only | Seed demo sementara aktif; signoff PIC/MFD resmi tetap debt produksi |
 
 Shortlink Buku Tamu `https://s.bps.go.id/tamu1306` diverifikasi melalui request HEAD pada 21 Juli 2026: HTTP 200 dan mengarah ke Google Forms. Backend hanya menampilkan shortlink BPS tersebut dan tidak mengikuti redirect server-side.
 
