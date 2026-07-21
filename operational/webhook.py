@@ -30,9 +30,13 @@ def create_webhook_app(
         if content_length:
             try:
                 if int(content_length) > max_body_bytes:
-                    return JSONResponse({"detail": "Payload too large"}, status_code=413)
+                    return JSONResponse(
+                        {"detail": "Payload too large"}, status_code=413
+                    )
             except ValueError:
-                return JSONResponse({"detail": "Invalid Content-Length"}, status_code=400)
+                return JSONResponse(
+                    {"detail": "Invalid Content-Length"}, status_code=400
+                )
         body = bytearray()
         async for chunk in request.stream():
             if len(body) + len(chunk) > max_body_bytes:

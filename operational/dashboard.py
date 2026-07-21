@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from operational.dashboard_security import (
@@ -16,11 +16,41 @@ STATIC = Path(__file__).with_name("static")
 
 
 def create_dashboard_app(
-    backend, evolution, *, session_secret: str, secure_cookie: bool = False
+    backend,
+    evolution,
+    *,
+    session_secret: str,
+    secure_cookie: bool = False,
+    allowed_origin: str | None = None,
 ):
     if len(session_secret) < 32:
         raise ValueError("session secret must be at least 32 characters")
     app = FastAPI()
+
+    @app.exception_handler(ValueError)
+    async def invalid_request(request: Request, exc: ValueError):
+        return JSONResponse({"detail": "Permintaan tidak valid"}, status_code=422)
+
+    @app.middleware("http")
+    async def security(request: Request, call_next):
+        if (
+            request.method in {"POST", "PUT", "PATCH", "DELETE"}
+            and allowed_origin
+            and request.headers.get("origin") != allowed_origin
+        ):
+            return Response(status_code=403)
+        response = await call_next(request)
+        response.headers.update(
+            {
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "Referrer-Policy": "no-referrer",
+                "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'",
+            }
+        )
+        return response
+
     app.mount(
         "/dashboard/static", StaticFiles(directory=STATIC), name="dashboard-static"
     )
@@ -34,6 +64,13 @@ def create_dashboard_app(
         )
         if not session:
             raise HTTPException(403 if mutate else 401, "Sesi tidak valid")
+        current = backend.session_user(session["uid"])
+        if (
+            not current
+            or not current.get("active")
+            or current.get("role") != session["role"]
+        ):
+            raise HTTPException(401, "Sesi tidak valid")
         if superadmin and session["role"] != "superadmin":
             raise HTTPException(403, "Khusus superadmin")
         return session

@@ -9,6 +9,8 @@
 <body>
   <header><div><strong>Marawa</strong><small>Dashboard Pelayanan Statistik Terpadu</small></div><span id="wa-state" role="status">WhatsApp belum diperiksa</span></header>
   <main>
+    <section id="login"><h1>Masuk dashboard</h1><form id="login-form"><label for="username">Nama pengguna</label><input id="username" autocomplete="username" required><label for="password">Kata sandi</label><input id="password" type="password" autocomplete="current-password" required><button>Masuk</button><p id="login-status" role="alert"></p></form></section>
+    <div id="workspace" hidden>
     <nav aria-label="Menu utama">
       <button data-view="inbox" aria-current="page">Inbox</button>
       <button data-view="settings">Pengaturan</button>
@@ -20,6 +22,7 @@
     </section>
     <section id="settings" hidden><h1>Pengaturan operasional</h1><p>Status instance, pairing QR, webhook, jam layanan, dan timeout dikelola superadmin.</p><button id="check-wa">Periksa WhatsApp</button><button id="pair-wa">Tampilkan QR</button><div id="qr" aria-live="polite"></div></section>
     <section id="users" hidden><h1>Pengguna</h1><p>Superadmin dapat menambah petugas dan superadmin serta menonaktifkan akun.</p><button id="add-user">Tambah pengguna</button><div id="user-list" aria-live="polite"></div></section>
+    </div>
   </main>
   <script src="/dashboard/static/dashboard.js" defer></script>
 </body>

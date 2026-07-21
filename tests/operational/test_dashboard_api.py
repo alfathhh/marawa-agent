@@ -23,6 +23,9 @@ class Backend:
     def authenticate(self, username):
         return self.users.get(username)
 
+    def session_user(self, uid):
+        return next((user for user in self.users.values() if user["id"] == uid), None)
+
     def list_handover(self):
         return [{"code": "ABCD", "phone": "628123456789", "status": "PENDING"}]
 
@@ -159,6 +162,40 @@ def test_superadmin_users_settings_and_evolution_ops():
         ).json()["state"]
         == "disconnected"
     )
+
+
+def test_security_headers_and_exact_origin_gate():
+    app = TestClient(
+        create_dashboard_app(
+            Backend(),
+            Evolution(),
+            session_secret=SECRET,
+            allowed_origin="https://dashboard.example",
+        )
+    )
+    response = app.get("/dashboard")
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert app.post("/dashboard/api/auth/login", json={}).status_code == 403
+    assert (
+        app.post(
+            "/dashboard/api/auth/login",
+            json={},
+            headers={"Origin": "https://dashboard.example"},
+        ).status_code
+        == 401
+    )
+
+
+def test_deactivated_user_session_is_revoked_immediately():
+    backend = Backend()
+    client = TestClient(
+        create_dashboard_app(backend, Evolution(), session_secret=SECRET)
+    )
+    login(client)
+    backend.users["admin"]["active"] = False
+    assert client.get("/dashboard/api/auth/me").status_code == 401
 
 
 def test_bad_login_and_inactive_user_are_generic():

@@ -47,7 +47,11 @@ def _parse_inbound(data):
     if not isinstance(jid, str) or not jid.endswith("@s.whatsapp.net"):
         return None
     phone = jid.removesuffix("@s.whatsapp.net")
-    if not phone.isdigit() or not 8 <= len(phone) <= 16 or not isinstance(event_id, str):
+    if (
+        not phone.isdigit()
+        or not 8 <= len(phone) <= 16
+        or not isinstance(event_id, str)
+    ):
         return None
     extended = message.get("extendedTextMessage")
     text = message.get("conversation")
@@ -70,7 +74,9 @@ def _parse_delivery(data):
         return None
     key = data.get("key") if isinstance(data.get("key"), dict) else {}
     update = data.get("update") if isinstance(data.get("update"), dict) else {}
-    message_id = data.get("keyId") or data.get("messageId") or key.get("id") or data.get("id")
+    message_id = (
+        data.get("keyId") or data.get("messageId") or key.get("id") or data.get("id")
+    )
     raw_status = data.get("status", update.get("status"))
     status = _STATUS.get(raw_status, str(raw_status).strip().upper())
     if not isinstance(message_id, str) or status not in {*_PROGRESS, "ERROR"}:
@@ -119,27 +125,39 @@ class EvolutionClient:
             response.raise_for_status()
             payload = response.json()
             nested = payload.get("instance") if isinstance(payload, dict) else None
-            raw = nested.get("state") if isinstance(nested, dict) else payload.get("state")
+            raw = (
+                nested.get("state")
+                if isinstance(nested, dict)
+                else payload.get("state")
+            )
         except (httpx.HTTPError, ValueError, TypeError, AttributeError):
             return {"error": {"code": "evolution_unavailable"}}
         state = str(raw or "unknown").casefold()
-        normalized = {"open": "connected", "connected": "connected",
-                      "close": "disconnected", "closed": "disconnected",
-                      "connecting": "connecting"}.get(state, "unknown")
+        normalized = {
+            "open": "connected",
+            "connected": "connected",
+            "close": "disconnected",
+            "closed": "disconnected",
+            "connecting": "connecting",
+        }.get(state, "unknown")
         return {"instance": self.instance, "state": normalized}
 
     async def pairing_qr(self):
         try:
             response = await self.client.get(
-                f"/instance/connect/{self.instance}", headers={"apikey": self.api_key})
+                f"/instance/connect/{self.instance}", headers={"apikey": self.api_key}
+            )
             response.raise_for_status()
             payload = response.json()
             candidate = payload.get("base64") if isinstance(payload, dict) else None
             encoded = candidate.split(",", 1)[-1] if isinstance(candidate, str) else ""
             decoded = base64.b64decode(encoded, validate=True)
-            qr = ("data:image/png;base64," + encoded
-                  if 0 < len(decoded) <= 1_000_000 and decoded.startswith(b"\x89PNG\r\n\x1a\n")
-                  else None)
+            qr = (
+                "data:image/png;base64," + encoded
+                if 0 < len(decoded) <= 1_000_000
+                and decoded.startswith(b"\x89PNG\r\n\x1a\n")
+                else None
+            )
         except (httpx.HTTPError, ValueError, TypeError, binascii.Error):
             return {"error": {"code": "evolution_unavailable"}}
         return {"instance": self.instance, "state": "connecting", "qr": qr}
@@ -147,7 +165,8 @@ class EvolutionClient:
     async def logout(self):
         try:
             response = await self.client.delete(
-                f"/instance/logout/{self.instance}", headers={"apikey": self.api_key})
+                f"/instance/logout/{self.instance}", headers={"apikey": self.api_key}
+            )
             response.raise_for_status()
         except httpx.HTTPError:
             return {"error": {"code": "evolution_unavailable"}}

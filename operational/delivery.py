@@ -1,5 +1,6 @@
-async def deliver_batch(store, evolution, claim_token: str, *, limit: int = 10,
-                        max_attempts: int = 8):
+async def deliver_batch(
+    store, evolution, claim_token: str, *, limit: int = 10, max_attempts: int = 8
+):
     result = {"accepted": 0, "failed": 0}
     for row in store.claim_outbound(claim_token, limit=limit):
         response = await evolution.send_text(row["phone"], row["body"])

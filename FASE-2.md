@@ -42,7 +42,7 @@ Outbound: QUEUED → SENDING → ACCEPTED → SERVER_ACK → DELIVERY_ACK → RE
 - [x] Migration PostgreSQL awal untuk durable inbound, outbound, dan early receipt.
 - [x] Unique idempotency key inbound dan nullable unique outbox dedupe.
 - [x] Migration upgrade/downgrade, duplicate admission, receipt reconciliation, dan monotonic delivery diuji pada PostgreSQL 17 disposable.
-- [ ] Users, settings, contacts, conversations, handover, dan audit ditambahkan surgical pada milestone yang pertama memakainya.
+- [x] Users, settings, handover, dan audit ditambahkan surgical pada milestone yang pertama memakainya; contacts/conversations tidak dibuat karena queue + handover sudah memenuhi MVP.
 
 ### P1 — Evolution boundary
 
@@ -54,29 +54,31 @@ Outbound: QUEUED → SENDING → ACCEPTED → SERVER_ACK → DELIVERY_ACK → RE
 
 ### P2 — Agent bridge
 
-- Pesan inbound masuk agent runtime Marawa.
-- Jawaban/provenance dirender WhatsApp-safe.
-- Provider/BPS failure menghasilkan fallback aman dan tidak kehilangan inbound.
+- [x] Durable inbound worker memasukkan pesan ke runtime contract Marawa.
+- [x] Jawaban/provenance official BPS dirender WhatsApp-safe dan dideduplikasi ke outbox.
+- [x] Provider/BPS failure menghasilkan bounded retry/dead-letter tanpa jawaban palsu.
+- [ ] Production composition wajib menginjeksi runtime Gemini+BPS; `ProviderMock` prototype tidak pernah dipakai untuk WhatsApp.
 
 ### P3 — Handover
 
-- Tawaran, start, claim atomik first-wins, relay, resolve/cancel.
-- Timeout klaim, first reply, admin idle, user idle.
-- Semua terminal path mengembalikan state bot secara konsisten.
+- [x] Request, claim atomik first-wins, fenced relay, release, resolve/cancel.
+- [x] Claim deadline, first reply, admin idle, user idle, dan restart recovery.
+- [x] Semua terminal path mengembalikan state bot secara konsisten.
 
 ### P4 — Dashboard
 
-- Auth/role/CSRF/session invalidation.
-- Inbox real-time, claim/reply/resolve.
-- Superadmin users/settings/Evolution/KB.
-- Audit dan masking data.
+- [x] Signed HttpOnly session, role, CSRF, exact Origin, dan immediate session invalidation.
+- [x] Inbox queue, claim/reply/release/resolve melalui PostgreSQL backend.
+- [x] Superadmin users/settings dan Evolution status/QR/logout contract.
+- [x] Audit mutation, masking nomor, responsive static dashboard tanpa build step.
+- [ ] Knowledge seed management ditunda: seed prototype file-based dan belum punya signoff PIC.
 
 ### P5 — Acceptance
 
-- Unit/contract/integration test semua state.
-- Restart recovery inbox/outbox.
-- Evolution live: upsert masuk, send accepted, `messages.update` delivery atau error terbukti.
-- Browser desktop/mobile dan security review.
+- [x] Unit/contract/integration PostgreSQL semua state: 317 passed pada 21 Juli 2026.
+- [x] Lease-based restart recovery inbox/outbox.
+- [ ] Evolution live: butuh URL/API key/instance dan nomor WhatsApp UAT nyata.
+- [x] Browser desktop login/navigation/degraded Evolution dan security headers diuji nyata; responsive 360px dijaga contract CSS, mobile screenshot belum diambil karena browser resize runner tidak tersedia.
 
 ## Gate implementasi
 
