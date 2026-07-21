@@ -9,7 +9,16 @@ def test_dashboard_shell_has_required_views_and_accessibility_hooks():
     css = (STATIC / "dashboard.css").read_text()
     js = (STATIC / "dashboard.js").read_text()
 
-    for value in ("Inbox", "Pengaturan", "Pengguna", "aria-live", "Balasan petugas"):
+    for value in (
+        "Ringkasan",
+        "Inbox",
+        "Pengaturan",
+        "Pengguna",
+        "aria-live",
+        "Balasan petugas",
+        "disconnect-wa",
+        "metric-queue",
+    ):
         assert value in html
     for value in (
         "Basis Pengetahuan",

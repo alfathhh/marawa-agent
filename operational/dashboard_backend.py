@@ -22,6 +22,23 @@ _SETTINGS = {
     "HANDOVER_REBROADCAST",
 }
 _TIMEOUTS = {key for key in _SETTINGS if key.endswith("_MIN")}
+_STATUSES = {
+    "inbound": ("PENDING", "PROCESSING", "DONE", "DEAD"),
+    "outbound": (
+        "QUEUED",
+        "SENDING",
+        "ACCEPTED",
+        "PENDING",
+        "SERVER_ACK",
+        "DELIVERY_ACK",
+        "READ",
+        "PLAYED",
+        "ERROR",
+        "DEAD",
+    ),
+    "handovers": ("PENDING", "ACTIVE", "RESOLVED", "FAILED", "EXPIRED"),
+    "knowledge": ("DUMMY", "VERIFIED"),
+}
 
 
 class DashboardBackend:
@@ -39,6 +56,41 @@ class DashboardBackend:
 
     def audit(self, actor_id: int | None, action: str, target: str) -> None:
         self._audit(actor_id, action, target)
+
+    def operational_overview(self) -> dict:
+        result = {}
+        for name, table in (
+            ("inbound", "inbound_events"),
+            ("outbound", "outbound_messages"),
+            ("handovers", "handovers"),
+            ("knowledge", "knowledge_base"),
+        ):
+            counts = {
+                row.status: row.count
+                for row in self.connection.execute(
+                    text(
+                        f"SELECT status, count(*) AS count FROM {table} GROUP BY status"
+                    )
+                )
+            }
+            result[name] = {status: counts.get(status, 0) for status in _STATUSES[name]}
+        result["active_users"] = self.connection.execute(
+            text("SELECT count(*) FROM dashboard_users WHERE active")
+        ).scalar_one()
+        return result
+
+    def latest_audit(self) -> list[dict]:
+        rows = self.connection.execute(
+            text("""
+            SELECT a.id, a.actor_id, u.username AS actor_username,
+                   a.action, a.target, a.created_at
+            FROM audit_log a
+            LEFT JOIN dashboard_users u ON u.id = a.actor_id
+            ORDER BY a.created_at DESC, a.id DESC
+            LIMIT 50
+        """)
+        ).mappings()
+        return [dict(row) for row in rows]
 
     def authenticate(self, username: str) -> dict | None:
         if not isinstance(username, str):

@@ -248,6 +248,16 @@ def create_dashboard_app(
         auth(request, superadmin=True)
         return backend.list_users()
 
+    @app.get("/dashboard/api/overview")
+    def overview(request: Request):
+        auth(request, superadmin=True)
+        return backend.operational_overview()
+
+    @app.get("/dashboard/api/audit")
+    def audit_log(request: Request):
+        auth(request, superadmin=True)
+        return backend.latest_audit()
+
     @app.post("/dashboard/api/users", status_code=201)
     async def create_user(request: Request):
         user = auth(request, superadmin=True, mutate=True)

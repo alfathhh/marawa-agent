@@ -56,6 +56,14 @@ services:
     deploy:
       replicas: 1
 
+  bootstrap-evolution:
+    <<: *marawa
+    restart: "no"
+    command: ["python3", "-m", "operational.bootstrap_evolution"]
+    depends_on:
+      evolution:
+        condition: service_healthy
+
   worker:
     <<: *marawa
     command: ["sh", "scripts/start.sh", "worker"]
@@ -64,6 +72,8 @@ services:
         condition: service_completed_successfully
       evolution:
         condition: service_healthy
+      bootstrap-evolution:
+        condition: service_completed_successfully
     deploy:
       replicas: 1
 

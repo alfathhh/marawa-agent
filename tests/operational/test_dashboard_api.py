@@ -76,6 +76,18 @@ class Backend:
         self.actions.append(("knowledge", key, body, actor_id))
         return {"key": key, **body, "updated_by": actor_id}
 
+    def operational_overview(self):
+        return {
+            "inbound": {"DONE": 2},
+            "outbound": {"ACCEPTED": 1},
+            "handovers": {"PENDING": 1},
+            "knowledge": {"DUMMY": 3, "VERIFIED": 0},
+            "active_users": 1,
+        }
+
+    def latest_audit(self):
+        return [{"id": 1, "action": "settings.set", "target": "BOT_ENABLED"}]
+
 
 class Evolution:
     async def connection_status(self):
@@ -173,6 +185,10 @@ def test_superadmin_users_settings_and_evolution_ops():
         == 201
     )
     assert client.get("/dashboard/api/settings").status_code == 200
+    assert client.get("/dashboard/api/overview").json()["active_users"] == 1
+    assert client.get("/dashboard/api/audit").json() == [
+        {"id": 1, "action": "settings.set", "target": "BOT_ENABLED"}
+    ]
     assert (
         client.get("/dashboard/api/ops/evolution/status").json()["state"] == "connected"
     )

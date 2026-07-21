@@ -18,6 +18,7 @@ def test_full_stack_contract():
         "db",
         "migrate",
         "app",
+        "bootstrap-evolution",
         "worker",
         "evolution-db",
         "redis",
@@ -35,6 +36,10 @@ def test_full_stack_contract():
     )
     assert (
         services["worker"]["depends_on"]["migrate"]["condition"]
+        == "service_completed_successfully"
+    )
+    assert (
+        services["worker"]["depends_on"]["bootstrap-evolution"]["condition"]
         == "service_completed_successfully"
     )
     assert (
