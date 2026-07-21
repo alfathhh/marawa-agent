@@ -46,10 +46,11 @@ Outbound: QUEUED → SENDING → ACCEPTED → SERVER_ACK → DELIVERY_ACK → RE
 
 ### P1 — Evolution boundary
 
-- Parser `messages.upsert`, abaikan grup/fromMe/media unsupported.
-- Parser `messages.update` dan status monotonic.
-- Connection status/QR/logout.
-- Outbox worker; `sendText` hanya menghasilkan `ACCEPTED`.
+- [x] Parser `messages.upsert`, abaikan grup/fromMe/media unsupported.
+- [x] Parser `messages.update` dan status monotonic.
+- [x] Authenticated webhook dengan body limit dan exact production instance.
+- [x] Connection status, QR PNG tervalidasi, dan logout.
+- [x] Outbox worker dengan `SKIP LOCKED`, ordering per nomor, lease recovery 90 detik, bounded retry/dead-letter; `sendText` hanya menghasilkan `ACCEPTED`.
 
 ### P2 — Agent bridge
 

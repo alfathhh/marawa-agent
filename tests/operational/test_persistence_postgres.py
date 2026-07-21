@@ -91,3 +91,41 @@ def test_late_or_duplicate_receipt_never_regresses_delivery(connection):
     assert store.record_receipt("provider-2", "READ") == "READ"
     assert store.record_receipt("provider-2", "ERROR") == "ERROR"
     assert store.record_receipt("provider-2", "PLAYED") == "ERROR"
+
+
+def test_claim_preserves_order_per_phone_and_allows_other_phone(connection):
+    store = Store(connection)
+    first = store.enqueue_outbound("628111111111", "A1", "a:1")
+    second = store.enqueue_outbound("628111111111", "A2", "a:2")
+    other = store.enqueue_outbound("628222222222", "B1", "b:1")
+
+    claimed = store.claim_outbound("worker-1", limit=10)
+
+    assert {row["id"] for row in claimed} == {first, other}
+    assert second not in {row["id"] for row in claimed}
+
+
+def test_stale_lease_is_recovered_and_attempts_are_bounded(connection):
+    store = Store(connection)
+    outbound_id = store.enqueue_outbound("628333333333", "Halo", "c:1")
+    assert store.claim_outbound("worker-dead", limit=1)[0]["id"] == outbound_id
+    connection.execute(text("""
+        UPDATE outbound_messages SET lease_until=now() - interval '1 second'
+        WHERE id=:id
+    """), {"id": outbound_id})
+
+    reclaimed = store.claim_outbound("worker-new", limit=1)
+
+    assert reclaimed[0]["id"] == outbound_id
+    assert reclaimed[0]["claim_token"] != "worker-dead"
+
+
+def test_failure_requeues_then_dead_letters_at_max_attempts(connection):
+    store = Store(connection)
+    outbound_id = store.enqueue_outbound("628444444444", "Halo", "d:1")
+    store.claim_outbound("worker-1", limit=1)
+
+    assert store.mark_failed(outbound_id, "worker-1", "transport", max_attempts=2) == "QUEUED"
+    connection.execute(text("UPDATE outbound_messages SET available_at=now() WHERE id=:id"), {"id": outbound_id})
+    store.claim_outbound("worker-2", limit=1)
+    assert store.mark_failed(outbound_id, "worker-2", "transport", max_attempts=2) == "DEAD"

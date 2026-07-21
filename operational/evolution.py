@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import binascii
+
 import httpx
 
 _STATUS = {
@@ -106,3 +109,46 @@ class EvolutionClient:
             "status": "ACCEPTED",
             "provider_message_id": message_id if isinstance(message_id, str) else None,
         }
+
+    async def connection_status(self):
+        try:
+            response = await self.client.get(
+                f"/instance/connectionState/{self.instance}",
+                headers={"apikey": self.api_key},
+            )
+            response.raise_for_status()
+            payload = response.json()
+            nested = payload.get("instance") if isinstance(payload, dict) else None
+            raw = nested.get("state") if isinstance(nested, dict) else payload.get("state")
+        except (httpx.HTTPError, ValueError, TypeError, AttributeError):
+            return {"error": {"code": "evolution_unavailable"}}
+        state = str(raw or "unknown").casefold()
+        normalized = {"open": "connected", "connected": "connected",
+                      "close": "disconnected", "closed": "disconnected",
+                      "connecting": "connecting"}.get(state, "unknown")
+        return {"instance": self.instance, "state": normalized}
+
+    async def pairing_qr(self):
+        try:
+            response = await self.client.get(
+                f"/instance/connect/{self.instance}", headers={"apikey": self.api_key})
+            response.raise_for_status()
+            payload = response.json()
+            candidate = payload.get("base64") if isinstance(payload, dict) else None
+            encoded = candidate.split(",", 1)[-1] if isinstance(candidate, str) else ""
+            decoded = base64.b64decode(encoded, validate=True)
+            qr = ("data:image/png;base64," + encoded
+                  if 0 < len(decoded) <= 1_000_000 and decoded.startswith(b"\x89PNG\r\n\x1a\n")
+                  else None)
+        except (httpx.HTTPError, ValueError, TypeError, binascii.Error):
+            return {"error": {"code": "evolution_unavailable"}}
+        return {"instance": self.instance, "state": "connecting", "qr": qr}
+
+    async def logout(self):
+        try:
+            response = await self.client.delete(
+                f"/instance/logout/{self.instance}", headers={"apikey": self.api_key})
+            response.raise_for_status()
+        except httpx.HTTPError:
+            return {"error": {"code": "evolution_unavailable"}}
+        return {"instance": self.instance, "state": "disconnected"}

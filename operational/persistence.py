@@ -27,6 +27,40 @@ class Store:
         """), {"phone": phone, "body": body, "dedupe_key": dedupe_key}).first()
         return row[0] if row else False
 
+    def claim_outbound(self, claim_token: str, limit: int = 10):
+        rows = self.connection.execute(text("""
+            WITH candidates AS (
+                SELECT o.id FROM outbound_messages o
+                WHERE ((o.status='QUEUED' AND o.available_at <= now())
+                       OR (o.status='SENDING' AND o.lease_until < now()))
+                  AND NOT EXISTS (
+                    SELECT 1 FROM outbound_messages earlier
+                    WHERE earlier.phone=o.phone AND earlier.id < o.id
+                      AND earlier.status IN ('QUEUED','SENDING'))
+                ORDER BY o.created_at, o.id
+                FOR UPDATE SKIP LOCKED LIMIT :limit
+            )
+            UPDATE outbound_messages o SET status='SENDING', claim_token=:token,
+                lease_until=now() + interval '90 seconds', attempts=o.attempts+1,
+                updated_at=now()
+            FROM candidates WHERE o.id=candidates.id
+            RETURNING o.id, o.phone, o.body, o.claim_token, o.attempts
+        """), {"token": claim_token, "limit": limit}).mappings().all()
+        return [dict(row) for row in rows]
+
+    def mark_failed(self, outbound_id: int, claim_token: str, error: str, max_attempts: int = 8):
+        row = self.connection.execute(text("""
+            UPDATE outbound_messages SET
+                status=CASE WHEN attempts >= :max_attempts THEN 'DEAD' ELSE 'QUEUED' END,
+                available_at=CASE WHEN attempts >= :max_attempts THEN available_at
+                    ELSE now() + make_interval(secs => LEAST(900, power(2, attempts)::int)) END,
+                last_error=:error, claim_token=NULL, lease_until=NULL, updated_at=now()
+            WHERE id=:id AND status='SENDING' AND claim_token=:token
+            RETURNING status
+        """), {"id": outbound_id, "token": claim_token, "error": error[:128],
+                 "max_attempts": max_attempts}).first()
+        return row[0] if row else None
+
     def mark_accepted(self, outbound_id: int, provider_message_id: str | None):
         status = "ACCEPTED"
         if provider_message_id:

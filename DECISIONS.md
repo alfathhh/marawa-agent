@@ -31,6 +31,7 @@
 | 24 | 21 Jul 2026 | **PO menerima Glosarium live dan 9router fallback sebagai degraded dependency sementara serta memutuskan lanjut ke fase operasional WhatsApp/dashboard.** Gemini tetap provider utama; fallback KB wajib saat Glosarium gagal; kegagalan 9router tidak boleh memblokir atau memicu jawaban tanpa sumber. | FASE-2.md · paket `operational/` |
 | 25 | 21 Jul 2026 | **Status outbound WhatsApp tidak boleh dianggap delivered hanya karena Evolution `sendText` mengembalikan 2xx/provider ID.** Delivery final berasal dari webhook `messages.update`; status `ERROR` setelah provider menerima request wajib tercatat. | FASE-2.md · outbox/delivery contract |
 | 26 | 21 Jul 2026 | **Persistence fase operasional memakai PostgreSQL 17, SQLAlchemy Core, Psycopg 3, dan Alembic.** Schema ditambah per milestone; tidak membuat seluruh dashboard/handover schema sebelum behavior-nya diuji. | `requirements-operational.txt` · `migrations/` · `operational/persistence.py` |
+| 27 | 21 Jul 2026 | **Outbox berjalan single-worker/replica dengan PostgreSQL `FOR UPDATE SKIP LOCKED`, lease 90 detik, ordering per nomor, maksimal 8 attempt, dan exponential backoff maksimal 900 detik.** Multi-replica ditunda sampai seluruh fencing state diuji. | `operational/delivery.py` · migration `0002` |
 
 ## Konsekuensi teknis ringkas
 

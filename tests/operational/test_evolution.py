@@ -112,3 +112,48 @@ def test_rejects_unknown_or_malformed_event_without_exception():
     assert parse_event({"event": "connection.update", "data": {}}) is None
     assert parse_event({"event": "messages.update", "data": {}}) is None
     assert parse_event([]) is None
+
+
+def test_connection_status_is_normalized():
+    async def run():
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json={"instance": {"state": "open"}})
+        )
+        async with httpx.AsyncClient(base_url="https://evolution.example", transport=transport) as http:
+            return await EvolutionClient(http, "secret", "marawa").connection_status()
+
+    assert asyncio.run(run()) == {"instance": "marawa", "state": "connected"}
+
+
+def test_pairing_qr_accepts_only_valid_png_data_url():
+    import base64
+    png = base64.b64encode(b"\x89PNG\r\n\x1a\nsmall").decode()
+
+    async def run(payload):
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+        async with httpx.AsyncClient(base_url="https://evolution.example", transport=transport) as http:
+            return await EvolutionClient(http, "secret", "marawa").pairing_qr()
+
+    assert asyncio.run(run({"base64": png})) == {
+        "instance": "marawa", "state": "connecting",
+        "qr": "data:image/png;base64," + png,
+    }
+    assert asyncio.run(run({"base64": base64.b64encode(b"not-png").decode()})) == {
+        "instance": "marawa", "state": "connecting", "qr": None,
+    }
+
+
+def test_logout_uses_instance_endpoint_and_returns_disconnected():
+    seen = {}
+
+    def handler(request):
+        seen["method"] = request.method
+        seen["path"] = request.url.path
+        return httpx.Response(200, json={})
+
+    async def run():
+        async with httpx.AsyncClient(base_url="https://evolution.example", transport=httpx.MockTransport(handler)) as http:
+            return await EvolutionClient(http, "secret", "marawa").logout()
+
+    assert asyncio.run(run()) == {"instance": "marawa", "state": "disconnected"}
+    assert seen == {"method": "DELETE", "path": "/instance/logout/marawa"}
