@@ -39,9 +39,10 @@ Outbound: QUEUED → SENDING → ACCEPTED → SERVER_ACK → DELIVERY_ACK → RE
 
 ### P0 — Kontrak dan persistence
 
-- Schema PostgreSQL: users, settings, contacts, conversations, inbound events, messages, outbound messages, handover sessions, audit log.
-- Unique idempotency key untuk inbound Evolution dan outbox dedupe.
-- Migration awal dan repository tests.
+- [x] Migration PostgreSQL awal untuk durable inbound, outbound, dan early receipt.
+- [x] Unique idempotency key inbound dan nullable unique outbox dedupe.
+- [x] Migration upgrade/downgrade, duplicate admission, receipt reconciliation, dan monotonic delivery diuji pada PostgreSQL 17 disposable.
+- [ ] Users, settings, contacts, conversations, handover, dan audit ditambahkan surgical pada milestone yang pertama memakainya.
 
 ### P1 — Evolution boundary
 
